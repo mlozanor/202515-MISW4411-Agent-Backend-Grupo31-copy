@@ -29,7 +29,6 @@ logger = logging.getLogger(__name__)
 
 class RagAgentService:
 
-
     def __init__(self):
         self.server_parameters = None
         self._lock = asyncio.Lock()
@@ -75,13 +74,18 @@ class RagAgentService:
     
 
     # ===============================================================================
-    # SEMANA 6: Implementar la ejecución del agente RAG
+    # SEMANA 6: Implementación de la ejecución del agente RAG
     # ===============================================================================
     
-
-    async def ask_rag(self, question):
+    async def ask_rag(self, question: str) -> str:
         """
         Procesa una pregunta usando el agente RAG.
+        
+        Basado en los tutoriales de LangGraph, este método:
+        1. Verifica que el agente esté inicializado
+        2. Crea el estado inicial con la pregunta del usuario
+        3. Invoca el agente compilado
+        4. Extrae y retorna la respuesta generada
         
         Args:
             question (str): La pregunta del usuario
@@ -95,23 +99,48 @@ class RagAgentService:
         
         logger.info(f"[RAG SERVICE] Processing question: {question}")
         
-        # ==========================================================
-        # Ejecución del agente de consulta al RAG
-        # ----------------------------------------------------------
-        # En este bloque deberás invocar al agente compilado para 
-        # procesar la consulta del usuario.
-        #
-        # Pasos sugeridos:
-        #   1. Enviar el mensaje o pregunta al agente.
-        #   2. Esperar la respuesta generada (async/await).
-        #   3. Retornar el resultado final.
-        #
-        # Ejemplo:
-        #   response = await self.agent.ainvoke({"input": question})
-        #   return response
-        # ==========================================================
+        # ===============================================================================
+        # Ejecución del agente RAG con LangGraph
+        # -------------------------------------------------------------------------------
+        # Basado en el tutorial, creamos el estado inicial y invocamos el agente
+        # ===============================================================================
         
-        pass  # Reemplazar con la implementación
+        try:
+            # Crear el estado inicial para el agente
+            # Similar a la función ask_rag_langgraph del tutorial
+            initial_state = {
+                "input": question,
+                "messages": [HumanMessage(content=question)],
+                "context": ""
+            }
+            
+            logger.info("[RAG SERVICE] Estado inicial creado, invocando agente...")
+            
+            # Invocar el agente compilado
+            # El agente ejecutará el flujo: ask_node → llm_node
+            final_state = await self.agent.ainvoke(initial_state)
+            
+            logger.info("[RAG SERVICE] Agente ejecutado exitosamente")
+            
+            # Extraer la respuesta del estado final
+            # La respuesta está en el último mensaje del estado
+            if "messages" in final_state and final_state["messages"]:
+                # Obtener el último mensaje (respuesta del asistente)
+                last_message = final_state["messages"][-1]
+                answer = last_message.content
+                
+                logger.info(f"[RAG SERVICE] Respuesta extraída: {len(answer)} caracteres")
+                
+                return answer
+            
+            else:
+                # Si no hay mensajes en el estado final, algo salió mal
+                logger.error("[RAG SERVICE] No se encontró respuesta en el estado final")
+                return "Error: No se pudo generar una respuesta."
+                
+        except Exception as e:
+            logger.error(f"[RAG SERVICE] Error al procesar pregunta: {str(e)}")
+            raise
     
 
     async def shutdown(self):
