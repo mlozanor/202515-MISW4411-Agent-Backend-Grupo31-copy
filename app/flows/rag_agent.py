@@ -125,7 +125,7 @@ def build_rag_agent(model, ask_tool):
     # NODO 1: Recuperación de contexto desde el RAG
     # ===============================================================================
     
-    def ask_node(state: AgentState) -> AgentState:
+    async def ask_node(state: AgentState) -> AgentState:
         """
         Nodo que invoca la herramienta del RAG para recuperar contexto.
         
@@ -139,7 +139,7 @@ def build_rag_agent(model, ask_tool):
         
         # Invocar la herramienta del RAG de forma síncrona
         # La herramienta MCP ya está configurada como herramienta de LangChain
-        context = ask_tool.invoke({"query": question})
+        context = await ask_tool.ainvoke({"query": question})
         
         logger.info(f"[ASK NODE] Contexto recuperado: {len(context)} caracteres")
         

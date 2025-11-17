@@ -25,7 +25,7 @@ logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(levelname)s - %(message)s",
     handlers=[
-        logging.StreamHandler(sys.stdout)
+        logging.StreamHandler(sys.stderr)
     ]
 )
 # Asegurar que el handler use UTF-8
@@ -47,11 +47,12 @@ mcp = FastMCP("rag-server")
 
 # Configuración del RAG externo
 # Estos valores se pueden modificar según las necesidades del proyecto
-RAG_BASE_URL = os.getenv("RAG_BASE_URL", "http://host.docker.internal:8000")
-RAG_COLLECTION = "gcp_collection"  # Modificar según la colección que usen
+RAG_BASE_URL = os.getenv("RAG_BASE_URL", "http://136.119.169.213:8000")
+RAG_COLLECTION = "chapter2_google_cloud"  # Mantener sincronizado con el backend RAG
 RAG_TOP_K = 5
-RAG_USE_RERANKING = True
-RAG_USE_QUERY_REWRITING = True
+RAG_FORCE_REBUILD = False
+RAG_USE_RERANKING = False
+RAG_USE_QUERY_REWRITING = False
 
 
 @mcp.tool()
@@ -80,9 +81,10 @@ async def ask(query: str) -> str:
     try:
         # Preparar el payload para la solicitud al RAG
         payload = {
-            "query": query,
-            "collection_name": RAG_COLLECTION,
+            "question": query,
+            "collection": RAG_COLLECTION,
             "top_k": RAG_TOP_K,
+            "force_rebuild": RAG_FORCE_REBUILD,
             "use_reranking": RAG_USE_RERANKING,
             "use_query_rewriting": RAG_USE_QUERY_REWRITING
         }
@@ -93,7 +95,7 @@ async def ask(query: str) -> str:
             
             # Realizar la solicitud POST al endpoint del RAG
             response = await client.post(
-                f"{RAG_BASE_URL}/query",
+                f"{RAG_BASE_URL}/api/v1/ask",
                 json=payload
             )
             

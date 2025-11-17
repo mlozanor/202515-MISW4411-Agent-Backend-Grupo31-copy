@@ -189,7 +189,7 @@ GOOGLE_API_KEY=your-google-api-key-here
 # ============================================
 
 # URL del sistema RAG externo
-RAG_BASE_URL=http://host.docker.internal:8000
+RAG_BASE_URL=http://136.119.169.213:8000
 
 ```
 
@@ -197,19 +197,36 @@ RAG_BASE_URL=http://host.docker.internal:8000
 
 - **`GOOGLE_API_KEY`**: Obligatorio para ambos agentes
 - **`RAG_BASE_URL`**: Solo necesario si vas a usar el RAG Agent
-  - Para RAG local: `http://host.docker.internal:8000`
-  - Para RAG en GCP: `http://YOUR_VM_IP:8000` (reemplaza con la IP de tu VM)
+- Valor por defecto (backend del curso): `http://136.119.169.213:8000`
+- Para RAG local: `http://host.docker.internal:8000`
+- Para RAG en otra VM: `http://YOUR_VM_IP:8000` (reemplaza con la IP de tu VM)
 
 **Configuración adicional del RAG**:
 
 Los parámetros del RAG (collection, top_k, reranking, query_rewriting) están configurados directamente en el código en `app/mcp_server/rag_server.py` con estos valores por defecto:
 
 ```python
-rag_collection = "test_collection"
+rag_collection = "chapter2_google_cloud"
 rag_top_k = 5
-rag_use_reranking = True
-rag_use_query_rewriting = True
+rag_force_rebuild = False
+rag_use_reranking = False
+rag_use_query_rewriting = False
 ```
+
+La herramienta MCP realiza solicitudes `POST` al endpoint `/api/v1/ask` del backend RAG esperado con el siguiente cuerpo:
+
+```json
+{
+  "question": "...",
+  "collection": "chapter2_google_cloud",
+  "top_k": 5,
+  "force_rebuild": false,
+  "use_reranking": false,
+  "use_query_rewriting": false
+}
+```
+
+Si el backend requiere parámetros diferentes, ajusta estos valores en `rag_server.py` o mediante variables de entorno.
 
 Si necesitan cambiar estos valores, pueden editar el archivo
 
