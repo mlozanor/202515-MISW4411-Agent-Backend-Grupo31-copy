@@ -49,3 +49,4 @@ RAG_AGENT_SERVICE.set_server_parameters(rag_agent_parameters)
 
 custom_agent_parameters = get_server_parameters("/app/mcp_server/custom_server.py")
 CUSTOM_AGENT_SERVICE.set_server_parameters(custom_agent_parameters)
+CUSTOM_AGENT_SERVICE.set_rag_server_parameters(rag_agent_parameters)

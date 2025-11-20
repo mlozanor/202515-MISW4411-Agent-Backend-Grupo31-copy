@@ -21,6 +21,7 @@ from mcp_server.model import llm
 from mcp import ClientSession
 import asyncio
 import logging
+from typing import Optional, Dict, Any
 
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
@@ -31,15 +32,30 @@ class CustomAgentService:
 
 
     def __init__(self):
-        self.server_parameters = None
+        self.custom_server_parameters = None
+        self.rag_server_parameters = None
         self._lock = asyncio.Lock()
-        self._stdio_ctx = None
-        self._session = None
+        self._custom_stdio_ctx = None
+        self._custom_session = None
+        self._rag_stdio_ctx = None
+        self._rag_session = None
         self.agent = None
+        self._tools_by_name: Dict[str, Any] = {}
+        self._conversation_state: Optional[dict] = None
 
     
     def set_server_parameters(self, server_parameters):
-        self.server_parameters = server_parameters
+        """
+        Configura los parámetros del servidor MCP personalizado.
+        """
+        self.custom_server_parameters = server_parameters
+    
+
+    def set_rag_server_parameters(self, server_parameters):
+        """
+        Configura los parámetros del servidor MCP del agente RAG.
+        """
+        self.rag_server_parameters = server_parameters
     
 
     async def initialize(self):
@@ -49,25 +65,45 @@ class CustomAgentService:
         NOTA: Este método ya está implementado y NO necesita modificación.
         """
         async with self._lock:
-            if self._session is None:
-                if not self.server_parameters:
-                    raise ValueError("MCP server parameters not set. Call set_server_parameters() first")
-                
-                logger.info("Starting stdio_client...")
-                self._stdio_ctx = stdio_client(self.server_parameters)
-                read, write = await self._stdio_ctx.__aenter__()
-                self._session = await ClientSession(read, write).__aenter__()
-                await self._session.initialize()
-                logger.info("MCP session initialized successfully")
+            if self.agent is None:
+                if not self.custom_server_parameters:
+                    raise ValueError("Custom MCP server parameters not set. Call set_server_parameters() first.")
 
-                # Cargar herramientas del MCP server
-                tools, tools_by_name = await load_tools(self._session)
-                logger.info(f"Loaded {len(tools)} tools from MCP server")
+                if not self.rag_server_parameters:
+                    raise ValueError("RAG MCP server parameters not set. Call set_rag_server_parameters() first.")
 
-                # Construir el agente personalizado con herramientas vinculadas
-                # IMPORTANTE: El model ya viene con bind_tools(tools) aplicado
-                self.agent = build_custom_agent(llm.bind_tools(tools), tools_by_name)
-                logger.info("Custom Agent created successfully")
+                logger.info("[CUSTOM SERVICE] Starting custom stdio_client...")
+                self._custom_stdio_ctx = stdio_client(self.custom_server_parameters)
+                custom_read, custom_write = await self._custom_stdio_ctx.__aenter__()
+                self._custom_session = await ClientSession(custom_read, custom_write).__aenter__()
+                await self._custom_session.initialize()
+                logger.info("[CUSTOM SERVICE] Custom MCP session initialized successfully")
+
+                custom_tools, custom_tools_by_name = await load_tools(self._custom_session)
+                logger.info(f"[CUSTOM SERVICE] Loaded {len(custom_tools)} custom tools")
+
+                logger.info("[CUSTOM SERVICE] Starting RAG stdio_client for ask tool...")
+                self._rag_stdio_ctx = stdio_client(self.rag_server_parameters)
+                rag_read, rag_write = await self._rag_stdio_ctx.__aenter__()
+                self._rag_session = await ClientSession(rag_read, rag_write).__aenter__()
+                await self._rag_session.initialize()
+                logger.info("[CUSTOM SERVICE] RAG MCP session initialized successfully")
+
+                rag_tools, rag_tools_by_name = await load_tools(self._rag_session)
+                logger.info(f"[CUSTOM SERVICE] Loaded {len(rag_tools)} RAG tools")
+
+                if "ask" not in rag_tools_by_name:
+                    raise ValueError("The RAG MCP server does not expose a tool named 'ask'")
+
+                combined_tools_by_name = {**custom_tools_by_name, **rag_tools_by_name}
+
+                # Evitar duplicados manteniendo el orden: primero personalizados, luego RAG
+                rag_only_tools = [tool for name, tool in rag_tools_by_name.items() if name not in custom_tools_by_name]
+                combined_tools = custom_tools + rag_only_tools
+
+                self._tools_by_name = combined_tools_by_name
+                self.agent = build_custom_agent(llm.bind_tools(combined_tools), combined_tools_by_name)
+                logger.info("[CUSTOM SERVICE] Custom Agent created successfully")
     
 
     # ===============================================================================
@@ -86,28 +122,44 @@ class CustomAgentService:
             str: La respuesta generada por el agente
         """
         # Asegurarse de que el agente está inicializado
-        if self._session is None or self.agent is None:
+        if self.agent is None:
             await self.initialize()
         
-        logger.info(f"[CUSTOM SERVICE] Processing question: {question}")
+        logger.info("[CUSTOM SERVICE] Processing question: %s", question)
         
-        # ==========================================================
-        # Ejecución del agente personalizado
-        # ----------------------------------------------------------
-        # En este bloque deberás invocar al agente compilado para 
-        # procesar la consulta del usuario.
-        #
-        # Pasos sugeridos:
-        #   1. Enviar el mensaje o pregunta al agente.
-        #   2. Esperar la respuesta generada (async/await).
-        #   3. Retornar el resultado final.
-        #
-        # Ejemplo:
-        #   response = await self.agent.ainvoke({"input": question})
-        #   return response
-        # ==========================================================
+        if self._conversation_state is None:
+            self._conversation_state = {
+                "messages": [],
+                "selected_chapter": None,
+                "intent": None,
+                "stage": None,
+                "pending_chapter": None,
+                "requested_topic": None,
+                "last_tool_result": None,
+            }
         
-        pass  # Reemplazar con la implementación
+        existing_messages = list(self._conversation_state.get("messages", []))
+        existing_messages.append(HumanMessage(content=question))
+        self._conversation_state["messages"] = existing_messages
+        self._conversation_state["intent"] = None
+        self._conversation_state["requested_topic"] = None
+        self._conversation_state["pending_chapter"] = self._conversation_state.get("pending_chapter")
+        
+        try:
+            final_state = await self.agent.ainvoke(self._conversation_state)
+        except Exception as e:
+            logger.error("[CUSTOM SERVICE] Error ejecutando el agente: %s", e)
+            raise
+
+        self._conversation_state = final_state
+        
+        if "messages" in final_state:
+            for message in reversed(final_state["messages"]):
+                if isinstance(message, AIMessage):
+                    return message.content
+        
+        logger.error("[CUSTOM SERVICE] No se encontró respuesta del agente")
+        return "Lo siento, no pude generar una respuesta en este momento."
     
 
     async def shutdown(self):
@@ -117,13 +169,19 @@ class CustomAgentService:
         NOTA: Este método ya está implementado y NO necesita modificación.
         """
         async with self._lock:
-            if self._session:
-                await self._session.__aexit__(None, None, None)
-                self._session = None
-            if self._stdio_ctx:
-                await self._stdio_ctx.__aexit__(None, None, None)
-                self._stdio_ctx = None
-            logger.debug("MCP session and stdio_client shut down")
+            if self._custom_session:
+                await self._custom_session.__aexit__(None, None, None)
+                self._custom_session = None
+            if self._custom_stdio_ctx:
+                await self._custom_stdio_ctx.__aexit__(None, None, None)
+                self._custom_stdio_ctx = None
+            if self._rag_session:
+                await self._rag_session.__aexit__(None, None, None)
+                self._rag_session = None
+            if self._rag_stdio_ctx:
+                await self._rag_stdio_ctx.__aexit__(None, None, None)
+                self._rag_stdio_ctx = None
+            logger.debug("MCP sessions and stdio_clients shut down")
 
 
 CUSTOM_AGENT_SERVICE = CustomAgentService()

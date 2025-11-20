@@ -1,0 +1,10 @@
+{
+    "Chapter 1: Cloud Computing Fundamentals – An Introduction to Digital Transformation": {
+        "chapter_file_path": "chapter1.txt",
+        "topics": [
+            "Cloud Computing Fundamentals",
+            "The Shift to Public Cloud",
+            "Understanding the Different Cloud Computing Models"
+        ]
+    }
+}

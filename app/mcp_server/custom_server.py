@@ -22,10 +22,88 @@ IMPORTANTE:
 from mcp.server.fastmcp import FastMCP
 import wikipediaapi
 import logging
+import json
+import random
+from pathlib import Path
+import sys
+from typing import Optional
+
+from langchain_core.messages import HumanMessage
+
+CURRENT_DIR = Path(__file__).resolve().parent
+PARENT_DIR = CURRENT_DIR.parent
+
+if str(CURRENT_DIR) not in sys.path:
+    sys.path.append(str(CURRENT_DIR))
+if str(PARENT_DIR) not in sys.path:
+    sys.path.append(str(PARENT_DIR))
+
+try:
+    from mcp_server.model import llm
+except ModuleNotFoundError:
+    from model import llm
 
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
 logger = logging.getLogger(__name__)
+
+ROOT_DIR = Path(__file__).resolve().parent.parent
+DOCS_DIR = ROOT_DIR / "docs"
+PROMPTS_DIR = ROOT_DIR / "prompts"
+METADATA_FILE = DOCS_DIR / "metadata.json"
+
+
+def _load_metadata() -> dict:
+    if not METADATA_FILE.exists():
+        raise FileNotFoundError(
+            f"metadata.json no encontrado en {METADATA_FILE}. "
+            "Asegúrate de crear este archivo con los capítulos disponibles."
+        )
+
+    with METADATA_FILE.open("r", encoding="utf-8") as f:
+        data = json.load(f)
+
+    if not isinstance(data, dict):
+        raise ValueError("El formato de metadata.json debe ser un objeto JSON con capítulos como llaves.")
+
+    return data
+
+
+def _load_prompt(prompt_filename: str) -> str:
+    prompt_path = PROMPTS_DIR / prompt_filename
+    if not prompt_path.exists():
+        raise FileNotFoundError(f"Prompt requerido no encontrado: {prompt_path}")
+    return prompt_path.read_text(encoding="utf-8").strip()
+
+
+def _get_chapter_entry(metadata: dict, chapter: str) -> dict:
+    if chapter not in metadata:
+        available = ", ".join(metadata.keys()) or "N/A"
+        raise ValueError(f"El capítulo '{chapter}' no existe. Capítulos disponibles: {available}")
+    entry = metadata[chapter]
+    if "chapter_file_path" not in entry:
+        raise ValueError(f"El capítulo '{chapter}' no tiene 'chapter_file_path' definido en metadata.json.")
+    return entry
+
+
+def _load_chapter_content(chapter_path: str) -> str:
+    chapter_file = DOCS_DIR / chapter_path
+    if not chapter_file.exists():
+        raise FileNotFoundError(f"No se encontró el archivo del capítulo en {chapter_file}")
+    return chapter_file.read_text(encoding="utf-8")
+
+
+async def _run_llm(prompt_filename: str, chapter_name: str, chapter_content: str, topic: Optional[str] = None) -> str:
+    system_prompt = _load_prompt(prompt_filename)
+    instruction = system_prompt + "\n\n"
+    instruction += f"Chapter: {chapter_name}\n"
+    if topic:
+        instruction += f"Topic: {topic}\n"
+    instruction += "\nChapter Content:\n"
+    instruction += chapter_content
+
+    response = await llm.ainvoke([HumanMessage(content=instruction)])
+    return response.content.strip()
 
 
 mcp = FastMCP("custom-server")
@@ -226,6 +304,115 @@ async def get_section_content(term: str, section_title: str) -> str:
     except Exception as e:
         logger.error(f"[CUSTOM MCP TOOL] Error en get_section_content: {str(e)}")
         return f"Error al obtener el contenido de la sección: {str(e)}"
+
+
+# ===============================================================================
+# STUDY AGENT TOOLS
+# ===============================================================================
+
+
+@mcp.tool()
+async def list_chapters() -> str:
+    """
+    Lista todos los capítulos disponibles para estudiar Google Cloud.
+    """
+    try:
+        metadata = _load_metadata()
+    except Exception as e:
+        logger.error("[STUDY MCP TOOL] Error listando capítulos: %s", e)
+        return f"Error al listar capítulos: {e}"
+
+    if not metadata:
+        return "No hay capítulos registrados en metadata.json."
+
+    response_lines = ["Capítulos disponibles:"]
+    for idx, chapter in enumerate(metadata.keys(), start=1):
+        response_lines.append(f"{idx}. {chapter}")
+
+    return "\n".join(response_lines)
+
+
+@mcp.tool()
+async def chapter_topics(chapter: str) -> str:
+    """
+    Devuelve la lista de temas principales del capítulo especificado.
+    """
+    try:
+        metadata = _load_metadata()
+        entry = _get_chapter_entry(metadata, chapter)
+    except Exception as e:
+        logger.error("[STUDY MCP TOOL] Error obteniendo temas: %s", e)
+        return str(e)
+
+    topics = entry.get("topics") or []
+    if not topics:
+        return f"El capítulo '{chapter}' no tiene temas registrados en metadata.json."
+
+    lines = [f"Temas principales del capítulo '{chapter}':"]
+    for idx, topic in enumerate(topics, start=1):
+        lines.append(f"{idx}. {topic}")
+    return "\n".join(lines)
+
+
+@mcp.tool()
+async def chapter_summary(chapter: str) -> str:
+    """
+    Resume el capítulo seleccionado en un solo párrafo utilizando el LLM.
+    """
+    try:
+        metadata = _load_metadata()
+        entry = _get_chapter_entry(metadata, chapter)
+        chapter_content = _load_chapter_content(entry["chapter_file_path"])
+    except Exception as e:
+        logger.error("[STUDY MCP TOOL] Error generando resumen: %s", e)
+        return str(e)
+
+    try:
+        summary = await _run_llm("chapter_summary.txt", chapter, chapter_content)
+        return summary
+    except Exception as e:
+        logger.error("[STUDY MCP TOOL] Error invocando LLM para resumen: %s", e)
+        return f"Error generando el resumen: {e}"
+
+
+@mcp.tool()
+async def learn_something(chapter: str, topic: Optional[str] = None) -> str:
+    """
+    Explica uno de los temas principales del capítulo en un solo párrafo.
+    """
+    try:
+        metadata = _load_metadata()
+        entry = _get_chapter_entry(metadata, chapter)
+        topics = entry.get("topics") or []
+        chapter_content = _load_chapter_content(entry["chapter_file_path"])
+    except Exception as e:
+        logger.error("[STUDY MCP TOOL] Error preparando explicación: %s", e)
+        return str(e)
+
+    chosen_topic = topic
+    if not chosen_topic:
+        if not topics:
+            return f"El capítulo '{chapter}' no tiene temas registrados para seleccionar."
+        chosen_topic = random.choice(topics)
+        logger.info(
+            "[STUDY MCP TOOL] Seleccionando tema aleatorio '%s' para el capítulo '%s'",
+            chosen_topic,
+            chapter,
+        )
+    else:
+        if chosen_topic not in topics:
+            available = ", ".join(topics) or "N/A"
+            return (
+                f"El tema '{chosen_topic}' no está registrado para el capítulo '{chapter}'. "
+                f"Temas disponibles: {available}"
+            )
+
+    try:
+        explanation = await _run_llm("learn_topic.txt", chapter, chapter_content, chosen_topic)
+        return explanation
+    except Exception as e:
+        logger.error("[STUDY MCP TOOL] Error invocando LLM para aprendizaje: %s", e)
+        return f"Error generando la explicación: {e}"
 
 
 # Ejecución del servidor MCP

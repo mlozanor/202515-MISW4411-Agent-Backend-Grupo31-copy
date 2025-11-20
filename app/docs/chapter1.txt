@@ -1,0 +1,400 @@
+Cloud Computing Fundamentals – An Introduction to Digital Transformation
+
+The cloud computing revolution is impacting organizations of all sizes, across industries, and all over
+the globe. Fundamentally, new ways of building systems, architecting infrastructure, and managing
+data have created a perfect storm for the cloud, with the total market value expected to hit $1 trillion
+by 2032 (according to Global Market Insights at https://www.gminsights.com/industryanalysis/public-cloud-market). As this massive growth market continues to expand, the
+need for talent that is familiar with the latest technologies and innovations also grows. The need for
+Google Cloud talent is particularly acute, with Google being the fastest-growing hyperscale cloud
+provider as of Q1 2023 with a growth rate of 28% YoY and an annual run rate of nearly $30 billion
+(as per https://abc.xyz/investor/static/pdf/2023Q1_alphabet_earnings_
+release.pdf). This book is designed to provide a baseline understanding of Google’s approach
+to the cloud for both business and technology professionals and prepare you to certify as a Google
+Cloud Digital Leader.
+In this first chapter, we will introduce foundational concepts for cloud computing and explore Google’s
+view of it by highlighting how Google defines digital transformation, along with both the business
+and technical forces driving businesses to adopt cloud solutions.
+Here is a summary of what will be covered:
+• How and why the cloud is transforming businesses
+• The benefits of the cloud for digital transformation
+• Elaborating on digital transformation with Google Cloud
+• Describing how a transformation cloud accelerates innovation
+We will cover these learnings via the following topics:
+• An introduction to data centers
+• The why behind digital transformation
+• The benefits of digital transformation
+• Hypothetical case study – Acme Inc.
+An introduction to data centers
+To understand where the hyperscale cloud industry is today and where it’s headed, it’s helpful to dig
+into how the industry came about. The term cloud refers to a system or application that is being used
+for a business purpose where the infrastructure for that system is centralized, typically in a location
+referred to as a data center. Data centers are warehouses specifically built for housing advanced
+computing hardware, networking equipment, data, and applications.
+Data centers are composed of racks and racks of servers, a business term to refer to a computer,
+along with networking equipment, storage arrays, and cooling and power equipment, among other
+components. Servers themselves are typically composed of a core processing unit (CPU), random
+access memory (RAM), and disk, which is typically either a hard drive or flash drive to store data. The
+CPU is typically used for computational tasks such as solving a math problem while RAM is used to
+store data temporarily, typically because data is being used by an application and being transformed
+in some way. Disk and flash drives are used to store data for a longer period, with disk drives being a
+cheaper, mechanical storage device and flash drives being more expensive given that data is stored in
+a semiconductor chip. Servers are used to host applications that are typically either internally facing,
+helping employees more efficiently and effectively do their job, or externally facing, providing services
+to customers and partners.
+When discussing data centers, it’s helpful to define the different types. We’ll start by understanding
+the traditional approach: on-premises infrastructure. On-premises is a term that’s used to refer to
+an organization that hosts its technology infrastructure onsite at offices or other business facilities.
+For example, if you are a legal firm, your systems would be on-premises if they were hosted at the
+same location as your office. There would be a server room or several rooms at the facility where all
+of the systems and data are hosted for the employees to complete their work. This location would
+host the systems that support worker productivity and internal workflows, while also facilitating
+business operations.
+This approach had benefits such as making it relatively easy to secure systems and applications. If all of
+the systems and data are hosted within your organization’s physical locations, and they are not accessible
+from the internet, you can establish a strong security posture through physical controls such as allowing
+only employees to access your facilities and not allowing them to take their workstations home with
+them. At a small scale, this is also a very manageable approach to infrastructure given that you could
+operate it with a small team and troubleshoot issues by reaching out to your local IT administrators.
+However, as organizations and systems began to become more complex, scale globally, and support
+new patterns of work, new approaches began to surface. If the legal firm, for example, were to grow to
+10 offices around the globe, it would be very difficult to continue to work via distributed, on-premises
+systems. Each office would need its own technology, infrastructure, and IT personnel and there would
+need to be a way for workers across offices to work together. They would need to share data, even if
+it were sensitive; if perhaps the New York and London offices were working together on a case for a
+multinational company operating in both the US and the UK. These pressures led to the centralization
+of infrastructure, which is where the term cloud comes from.
+Let’s explore the two core variations of cloud hosting: private cloud and public cloud. An organization
+leverages the private cloud when a company is running environments where there is only one tenant
+– themselves. This may mean that it owns and operates all of the data center infrastructure itself. The
+company buys or leases land, manages the building, procures the servers, installs the operating systems,
+and manages the applications and data while also being responsible for both the physical and virtual
+security of the private cloud. In some circumstances, they may procure the space from a third-party
+vendor but they are ultimately responsible for the hardware, software, and networking infrastructure,
+with the space within the facility dedicated exclusively to them. Some drawbacks of the private cloud
+are the requirements for large capital expenditure on real estate, equipment, and operating costs, as
+well as the deep complexity that comes along with having to design, build, maintain, secure, and scale
+their infrastructure.
+In contrast, when an organization leverages the public cloud, it offloads much of the physical
+responsibility of operating a data center to a third party. Google Cloud is a public cloud platform
+where developers and engineers can access infrastructure built on top of Google’s data centers and
+networks. This enables businesses to offload responsibilities such as building and managing the physical
+components of the data center to specialize in what will provide value to their customers. Customers
+of public cloud providers benefit by abstracting away much of the complexity of managing technology
+infrastructure by focusing on the virtualization layer and above. This means being responsible for the
+virtual machines, operating systems, applications, and data to operate their businesses.
+A company that operates hybrid cloud environments blends both public and private cloud environments.
+They may have their own data centers hosting internal or sensitive applications while leveraging the
+public cloud for externally facing applications. This pattern is common in organizations that built
+up their own data centers and are building new applications in the cloud or are migrating systems to
+optimize for the most efficient hosting strategy. In some cases, they may build a data warehouse in the
+cloud to consolidate and organize data from disparate on-premises systems such as sales, marketing,
+logistics, and fulfillment data.
+Multi-cloud is a cloud computing strategy where companies use multiple public cloud providers to
+host their applications. This allows them to run their workloads optimally across multiple environments 
+and vendors, reducing the risk that arises related to vendor lock-in, where organizations become
+restricted in their ability to innovate and negotiate cost when they consolidate their infrastructure
+under a single vendor. Managing environments across multiple cloud providers can be complex given
+the variations between the platforms and the potential required integrations. Multi-cloud is becoming
+more common as engineers build skills across multiple providers and vendors begin to differentiate
+themselves through unique capabilities, partnerships, or contracting vehicles.
+With the advent of cloud computing, we’ve also seen the rise of a new breed of technology company:
+cloud-native. Google Cloud states the following (https://cloud.google.com/learn/
+what-is-cloud-native):
+“Cloud native means adapting to the many new possibilities – but a very different
+set of architectural constraints – offered by the cloud compared to traditional
+on-premises infrastructure. Unlike monolithic applications, which must be built,
+tested, and deployed as a single unit, cloud-native architectures decompose
+components into loosely coupled services to help manage complexity and improve
+the speed, agility, and scale of software delivery.”
+Another concept that goes hand in hand with cloud-native is open source, as it relates to how software
+is developed and the accompanying standards with this shift. Historically, software has been closed
+source, meaning that the code base was owned and only viewable by the manufacturer. This led to a
+rise in enterprise software licensing where things such as vendor lock-in come into play, where you
+are at the mercy of the manufacturer from both a cost and capability perspective, locked into multiyear contracts, and unable to implement nor change the code base based on your needs.
+and vendors, reducing the risk that arises related to vendor lock-in, where organizations become
+restricted in their ability to innovate and negotiate cost when they consolidate their infrastructure
+under a single vendor. Managing environments across multiple cloud providers can be complex given
+the variations between the platforms and the potential required integrations. Multi-cloud is becoming
+more common as engineers build skills across multiple providers and vendors begin to differentiate
+themselves through unique capabilities, partnerships, or contracting vehicles.
+With the advent of cloud computing, we’ve also seen the rise of a new breed of technology company:
+cloud-native. Google Cloud states the following (https://cloud.google.com/learn/
+what-is-cloud-native):
+“Cloud native means adapting to the many new possibilities – but a very different
+set of architectural constraints – offered by the cloud compared to traditional
+on-premises infrastructure. Unlike monolithic applications, which must be built,
+tested, and deployed as a single unit, cloud-native architectures decompose
+components into loosely coupled services to help manage complexity and improve
+the speed, agility, and scale of software delivery.”
+Another concept that goes hand in hand with cloud-native is open source, as it relates to how software
+is developed and the accompanying standards with this shift. Historically, software has been closed
+source, meaning that the code base was owned and only viewable by the manufacturer. This led to a
+rise in enterprise software licensing where things such as vendor lock-in come into play, where you
+are at the mercy of the manufacturer from both a cost and capability perspective, locked into multiyear contracts, and unable to implement nor change the code base based on your needs.
+Containers were a new way of thinking about how to run applications as they relate to the underlying
+hardware and software. In the world of virtual machines, the application, operating system, and
+hardware are fundamentally coupled. This means that if the hardware fails, the application also fails.
+Containers allowed developers to scale applications more gracefully and build more fault tolerance into
+their architecture and systems. It also happened to be a more cost-effective way of hosting applications
+given that resources could be shared across several systems to ensure maximum utilization while
+minimizing cost.
+This shift in designing and architecting systems translated very well to cloud-native organizations,
+given their flexibility and ability to rapidly innovate. More traditional organizations began to adopt
+similar practices as they began to comprehend the value that these approaches can deliver to their
+business, with start-ups rising quickly and disrupting industry after industry.
+The shift from private to public cloud, by offloading the responsibilities of building and managing
+data centers, has enabled businesses to focus on driving change that has a meaningful impact on
+the bottom line. Engineers who had historically been tasked with monitoring onsite infrastructure
+or managing databases can be repurposed to increase developer productivity, improve the security
+posture, or engage in R&D projects.
+As we explore the forces behind why businesses have been shifting to public cloud adoption, it’s helpful
+to start by defining digital transformation, including its importance and benefits.
+The why behind digital transformation
+Over the last few decades, we’ve seen a steady shift of businesses and systems from analog to digital. With
+this shift came a significant change in how companies build teams, design go-to-market strategies, and
+generate revenue. This shift was fundamentally a shift from paper-based processes to computing-based
+processes, where files and data went from being stored in filing cabinets to databases and filestores.
+Imagine that you had to run a sales report to understand how much a department had done in sales
+over the last 10 years, growth rate year over year, and project out 5 additional years of sales. If the
+documents you required were on paper and scattered across three different sites, it may take weeks
+to collect them, analyze them, and provide the desired report. If, however, all of the data had been
+digitized and made available through an application, you would be able to run a report within seconds.
+Moving from weeks to seconds is a massive productivity boost and would enable business leaders to
+make faster, more accurate decisions. This is an example of the value digital transformation can provide.
+According to the Google Cloud documentation (https://cloud.google.com/learn/
+what-is-digital-transformation), the official definition is as follows:
+“It uses modern digital technologies – including all types of public, private, and
+hybrid cloud platforms – to create or modify business processes, culture, and
+customer experiences to meet changing business and market dynamics.”
+The push to digitally transform is felt across organizations, as highlighted by the official definition,
+as it impacts not only the tools the technology team uses but also the organizational culture and the
+ability to deliver modern customer experiences. Engineers often have to learn new skills or completely
+new technologies, adapting how they’ve worked to address the needs of today.
+There are many reasons why companies choose to go through this transformation:
+• Infrastructure flexibility
+• Ease of R&D
+• Quantifiable innovation
+• Global collaboration
+• Customer value
+• Agility
+Let’s explore these in detail.
+Infrastructure flexibility
+In the world of physical data centers, capacity planning and availability can be a big blocker. Having
+a server procured, shipped, configured, and pushed online can take days, weeks, or even months,
+depending on the circumstances. One of the big advantages of working with a cloud provider is that
+machines of all shapes and sizes are available through the click of a button. Spinning up a server,
+whether it’s in the US, Europe, or Asia, is a trivial workflow that makes it very easy to spin up servers
+virtually, deploy them, and manage them. It’s all done through a secure internet connection and if
+you decide that you no longer need something, you can spin it down to effectively stop paying for it.
+Ease of R&D
+By leveraging a cloud provider such as Google, organizations can quickly and easily access, test
+and validate new technologies as they are developed and launched. They can spin up development
+projects within a secure environment, ensuring that corporate or customer data won’t be accidentally
+leaked and that they have access to the latest technology being launched by cloud providers and their
+independent software vendor (ISV) partners.
+Measurable innovation
+When experimenting with different services, tools, and technologies, it can often be challenging to
+define success criteria and costs and make the right decisions. By leveraging a data-centric approach to
+testing and validation, businesses can quickly iterate on their developments and make smart decisions
+based on the results.
+Global collaboration
+Working with cross-functional teams that are distributed across the globe can be an issue whenever
+you don’t have the right tools, systems, and processes in place to facilitate the collaboration without
+the appropriate security and compliance controls. Through digital transformation, you can make
+data more accessible to people who need it, when they need it, while still ensuring compliance with
+existing requirements.
+Customer value
+The demands that come from customers are ever-evolving concerning developments in the market and
+associated technologies. By analyzing how customers prefer to engage, how they grow through their
+life cycle, and what needs arise throughout that journey, businesses can provide tailored experiences
+that meet and exceed customer expectations. They can find patterns and reasons why people leave the
+platform for example, identify the root cause(s), and implement a way to overcome those challenges
+proactively, thereby increasing retention and reducing churn.
+Agility
+Organizations are having to compete on a global scale with companies large and small to win new
+customers and retain existing ones. Through digital transformation, development teams are enabled
+to accelerate the pace at which they innovate while also being able to significantly increase the scale
+of their launches. Rather than having to launch a service in a specific region or city due to process or
+technology constraints, businesses can now build once and launch anywhere through innovations
+such as global cloud providers and Infrastructure as Code (IaC).
+Agility
+Organizations are having to compete on a global scale with companies large and small to win new
+customers and retain existing ones. Through digital transformation, development teams are enabled
+to accelerate the pace at which they innovate while also being able to significantly increase the scale
+of their launches. Rather than having to launch a service in a specific region or city due to process or
+technology constraints, businesses can now build once and launch anywhere through innovations
+such as global cloud providers and Infrastructure as Code (IaC).
+There are many reasons for a business to transform from analog, paper-based processes to digital
+processes. Not only will employees be more productive, but they’ll be more innovative and make
+better decisions. Workflows that might’ve taken days, weeks, or months can be compressed into days,
+hours, or even seconds. A common anecdote for demonstrating the impact of failing to digitize is the
+story of Blockbuster. Blockbuster was a brick-and-mortar store where you would go to rent or buy
+movies and TV shows. The walls and floors were lined with shelves covered in empty VHS and DVD
+boxes highlighting which titles were available. Many customers had come to cherish the experience
+of walking through those aisles, exploring interesting titles and genres until they finally found the
+one – and hoped it was in stock! Blockbuster, by 2004, had 9,000 stores globally (as per https://
+www.businessinsider.com/blockbuster-is-closing-forever-2013-11)
+and earned $5.9 billion in revenue (as per https://www.sec.gov/Archives/edgar/
+data/1085734/000119312507239499/dex991.htm).
+Fast forward to 2023 and you won’t find a Blockbuster anywhere as they were digitally disrupted by
+Netflix. They started by competing with Blockbuster through a video-mailing service, eliminating the
+need to go to a physical location and be at the mercy of what was in stock, but eventually moved onto
+cloud-based video streaming. Online video streaming created a new way to browse and consume content,
+where a customer had a massive library of titles at their fingertips. Customers began to expect to be able
+to watch the latest release from the comfort of their homes without having to worry about whether or
+not Blockbuster had that video in stock. Today, Netflix continues to be a successful company, having
+reached $8.1 billion in quarterly revenue for Q1 of 2023 (as per https://www.statista.com/
+statistics/273883/netflixs-quarterly-revenue/#:~:text=In%20the%20
+first%20quarter%20of,the%20corresponding%20quarter%20of%202022). They
+are now facing an innovation dilemma as they face intense competition from new services such as
+Disney+, Paramount+, and Max.
+Now that we understand why organizations are transforming digitally, let’s explore the benefits of
+going through that transition.
+Benefits of digital transformation
+There are many benefits to transforming a business so that it can leverage the latest advances in
+computing, software, and data technologies. Whether it’s launching new products or building new
+capabilities into an existing business, the technology space is ever evolving and the pace of innovation
+seems to be increasing. Companies that have implemented or were born digital as cloud-native
+companies have a significant advantage over those that haven’t.
+Whether it’s going from a monolithic application architecture that struggles to serve global clients
+to containers, Kubernetes, and global service orchestration, or the adoption of a data warehouse to
+empower analytics use cases, organizations that embrace a new way of doing things can make the
+most of new technologies as they quickly learn, test, validate and adopt them.
+According to the Google Cloud documentation, here are the main benefits of going through
+digital transformation:
+• Modernize infrastructure
+• Manage data
+• Gain insight
+• Break down team silos
+• Solve business problems
+• Realize cost savings
+Let’s look at them in detail.
+Modernize infrastructure
+Companies that transform digitally and adopt cloud-native ways of architecting systems can
+meaningfully optimize their hardware and software usage. By migrating away from building and
+managing infrastructure themselves, they can quickly and easily build systems that have evolved
+from the traditional, server-based architecture to more modern, service-based architecture or even
+serverless systems. These systems allow their engineers to automate much of the day-to-day tasks of
+operating and managing infrastructure through features such as auto-scaling, which dynamically scales
+the infrastructure up and down based on load. They also allow for global traffic routing, ensuring that
+customers have the best experience based on their geography and minimizing the time and effort
+required to build systems that scale globally.
+Manage data
+Data is exploding and as companies try to gain more insight into the health of their go-to-market
+approach and how their customers think about them, being able to capture, organize, and integrate
+these datasets can be challenging. Digital transformation empowers you to go from paper processes
+to digital processes where new tools and capabilities can be applied to store, transform, analyze, and
+monetize data. Organizations can ingest vast amounts of data, going from terabyte to petabyte to
+hexabyte scale from a myriad of different systems, regardless of whether they’re internal or external.
+Gain insight
+Digital systems not only allow you to more easily and efficiently manage data but also facilitate the
+act of deriving value from the data. Companies can adopt new approaches to sharpen the focus of
+their business on their core value, applying things such as machine learning to provide more value to
+their customers and generate new revenue streams. Business leaders can also be empowered to make
+better decisions through higher fidelity real-time data, which gives them a better understanding of
+the current state of the business and what challenges it faces.
+Break down team silos
+The transition from paper to digital also facilitates productivity and collaboration for teams across
+geographies. Employees can easily find, access, share, and collaborate on files and projects at the speed
+of light rather than being at the mercy of paper-based processes. Customers also benefit from this as
+the teams that they work with can deliver more value faster relative to competitors who don’t adopt
+modern practices. A marketing team in India, for example, might need to update a campaign for the
+local market. With a digital cloud-based system, a team in the US can quickly and easily upload all of
+the raw marketing files to a shared drive where the India team can access it to make the appropriate
+updates, all with the click of a button.
+Solve business problems
+The adoption of technology also helps organizations approach their processes and applications with
+a new lens. Digital systems help business leaders quickly pinpoint challenges within the organization
+and its engagement with customers. By equipping them with the information they need to improve
+how they work and engage with customers, the business can dynamically solve problems as they arise
+and can continuously refine its approach.
+Realize cost savings
+The result of implementing digital systems and modern ways of doing business across people,
+processes, and technology also results in cost savings. Paper-based processes are often cumbersome
+and expensive, requiring significant human work and can be very slow. These challenges can be
+overcome by implementing technology to automate away process complexity and cost. For example,
+through paper processes, it may take weeks to generate, validate, issue, and execute a contract. You
+have to engage multiple teams to put the paperwork together, validate that what is generated will
+pass integrity checks, and have the appropriate provisions. From there, you may have to mail or fax a
+contract to someone and hope that someone is on the other end to pick it up and put it through the
+appropriate process. Through a digital system, however, you can automate the specific contractual
+requirements to have them generated with the click of a button and issued for signature – within
+hours rather than weeks.
+There are many benefits to transforming digitally, ranging from realizing cost savings, solving business
+problems, and breaking down silos to more technical reasons such as modernizing infrastructure,
+managing data, and gaining insight from that data.
+Hypothetical case study – Acme Inc.
+Behind many of the major technological revolutions of the past couple of decades, there were often
+developments in key variables making them possible; computing, networking, and data. Whether we
+are discussing personal computers, smartphones, or cloud computing, they were all enabled thanks to
+advances in the density and scale of computing resources, the availability and quality of networking,
+and the accessibility of data.
+Before we dive into the intricacies of Google Cloud, its services, and the impact it is having on
+businesses, it is important to establish foundational knowledge to ensure we start on the same page.
+Let’s frame the technological revolution by following along with a hypothetical company, Acme Inc.
+Acme Inc. – its evolution from the 1980s to the 2020s
+In the early days of Acme Inc., when it was first founded in the 1980s, they were selling desktop
+software for personal computers. They had three offices, each with their own server closet, where any
+required systems were installed and hosted. Most of their corporate processes were based on paper,
+with the vast majority of the work not being digital. Security was relatively easy to set up and manage;
+only the two IT folks on the team had access to the server rooms and all employees left their corporate
+computers at the office – they were locked down to their desks. In this world, the perimeter was well
+defined; everyone had to go to the office to access corporate systems and through physical security,
+you could generally ensure the infrastructure was secure. No one could take their computers home
+and IT must be onsite to troubleshoot but overall, it seemed to be working and life went on.
+As time passed, Acme Inc. continued to grow and by the 1990s, they had 10 offices around the US. The
+IT team realized that they wouldn’t be able to physically manage and troubleshoot distributed systems
+across 10 offices and they needed to pivot their model. They had started digitizing their processes
+given the needs of the business and clients. Meanwhile, finance was starting to complain about the
+many hardware and software purchases required to maintain the technology ecosystem. Between all
+of the server and license requests, they decided to implement centralized infrastructure, empowering
+them to purchase equipment in bulk and making life easier for the IT team by consolidating all of the
+infrastructure that they needed to manage in one location.
+Acme Inc. implemented a data center strategy and by the 2000s, they were running a couple of private
+cloud locations. They adopt VMware and virtualization to make the most of their hardware, allowing
+them to maximize hardware utilization by sharing the compute resources from their servers across
+multiple applications. They set up a backup and disaster recovery strategy by running a hot-cold setup
+where their backup data center would help them recover from any issues with the primary location.
+Managing all of the corporate infrastructure, however, started to become a burden given the heavy
+weight and cost of running a data center. Between keeping up with all of the security vulnerabilities,
+ensuring hardware procurement would support future capacity needs, and also managing finance’s
+complaints about large capital expenditures, the IT team became overwhelmed.
+Thankfully, the advent of Software-as-a-Service (SaaS) solutions came onto the scene as organizations
+were looking to offload the responsibility of managing and securing infrastructure. IT can procure
+technology solutions that are hosted for them, empowering them to focus exclusively on permissions
+and data for the application while not having to worry about all of the additional layers of infrastructure
+that need to be addressed when you host things yourself.
+Going into the 2010s, Acme Inc. adopted several SaaS solutions for their infrastructure, ranging from
+productivity tools such as email, HR, and finance systems. The core of what they offered, however, was
+still self-hosted as their desktop application was now being modernized to be offered as a service. This
+ensured that you would be able to generate predictable, recurring revenue (keeping finance happy) and
+help address the needs of your clients. Unfortunately, because their data center was still self-hosted,
+Acme Inc. discovered that a nation-state attacker was able to access a database that one of their admins
+forgot to patch. This caused much pain for IT and sales as Acme Inc. now had to navigate challenging
+conversations about how they manage infrastructure and had a hard time earning the trust of their
+customers. Fortunately for Acme Inc., there was a new computing revolution just on the horizon.
+By 2020, Acme Inc. decided to migrate its infrastructure from on-premises to an Infrastructure-asa-Service (IaaS) provider. This enabled the Acme Inc. team to focus less on managing and securing
+the lower layers of infrastructure while empowering them to focus on projects that would move the
+needle for their organization. Rather than managing a database, their data engineer started building
+out a data lake. They moved all of their servers from their on-premises data centers to the cloud,
+which enabled them to spin down those assets and sell them off.
+With this capital burden being lifted, the Acme Inc. team invested in improving developer productivity
+and adopted a few new approaches to building code and managing teams: DevOps and microservicesbased architecture. By adopting more modern approaches to launching applications, Acme Inc.’s
+application is now more scalable and easily improvable than ever before. They push code to production
+weekly and can compete with even the hottest, most well-funded start-ups.
+Summary
+In our case study about Acme Inc., we touched on many of the key elements driving the change we
+are seeing in technology from a data center perspective. The variables that are constantly in tension
+with building and managing technology infrastructure fundamentally are cost versus performance
+and distributed versus centralized. Many of the changes that Acme Inc. implemented, whether it
+was going from closet server rooms to mainframes to virtualization to containers, were meant to
+overcome challenges around finance and customer experiences. When designing cloud systems, we
+are constantly trading off how we can deliver an excellent experience while trying to minimize cost.
+We’ll see this as a common theme as we explore different use cases and prepare for the exam questions;
+often, you’ll have to think through what would be the best system for the job given specific technical,
+business, and financial restraints.
+Now that we have a general sense of why organizations around the world and across industries are
+transforming themselves, it’s time to cover foundational cloud concepts. The focus for Chapter 2 will
+be on understanding why and how the cloud is adopted across different scenarios and business cases.
+We’ll explore the benefits of cloud infrastructure, along with how networking is the foundation upon
+which the cloud is built.

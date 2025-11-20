@@ -32,6 +32,10 @@ logging.info("API KEY successfully loaded")
 
 
 def get_server_parameters(server_path):
-    parameters = StdioServerParameters(command = "uv", args = ["run", server_path])
+    parameters = StdioServerParameters(
+        command = "uv",
+        args = ["run", server_path],
+        env = dict(os.environ)
+    )
     logging.info("Server Parameters successfully loaded")
     return parameters
