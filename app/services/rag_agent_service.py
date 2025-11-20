@@ -18,6 +18,13 @@ from flows.rag_agent import build_rag_agent
 from mcp.client.stdio import stdio_client
 from mcp_server.tools import load_tools
 from mcp_server.model import llm
+from core.errors import (
+    ConfigurationError,
+    ExternalServiceError,
+    ToolExecutionError,
+    ConversationStateError,
+    AgentError,
+)
 from mcp import ClientSession
 import asyncio
 import logging
@@ -39,6 +46,13 @@ class RagAgentService:
     
     def set_server_parameters(self, server_parameters):
         self.server_parameters = server_parameters
+
+    @staticmethod
+    def _format_error(error: AgentError) -> str:
+        message = str(error)
+        if getattr(error, "detail", None):
+            message = f"{message} Detalle: {error.detail}"
+        return message
     
 
     async def initialize(self):
@@ -48,10 +62,16 @@ class RagAgentService:
         NOTA: Este método ya está implementado y NO necesita modificación.
         """
         async with self._lock:
-            if self._session is None:
-                if not self.server_parameters:
-                    raise ValueError("MCP server parameters not set. Call set_server_parameters() first")
-                
+            if self._session is not None and self.agent is not None:
+                return
+
+            if not self.server_parameters:
+                raise ConfigurationError(
+                    "MCP server parameters not set.",
+                    detail="Call set_server_parameters() before initialize().",
+                )
+
+            try:
                 logger.info("Starting stdio_client...")
                 self._stdio_ctx = stdio_client(self.server_parameters)
                 read, write = await self._stdio_ctx.__aenter__()
@@ -59,18 +79,30 @@ class RagAgentService:
                 await self._session.initialize()
                 logger.info("MCP session initialized successfully")
 
-                # Cargar herramientas del MCP server
                 tools, tools_by_name = await load_tools(self._session)
-                
-                # Verificar que existe la herramienta "ask"
-                if "ask" not in tools_by_name.keys():
-                    raise ValueError("The MCP server does not have a tool called 'ask'")
-                
-                ask_tool = tools_by_name["ask"]
+            except Exception as exc:
+                raise ExternalServiceError(
+                    "Failed to initialize RAG MCP session.",
+                    detail=str(exc),
+                ) from exc
 
-                # Construir el agente RAG
+            if "ask" not in tools_by_name:
+                raise ConfigurationError(
+                    "The MCP server does not have a tool called 'ask'.",
+                    detail="Ensure the RAG MCP server exposes the ask tool.",
+                )
+
+            ask_tool = tools_by_name["ask"]
+
+            try:
                 self.agent = build_rag_agent(llm, ask_tool)
-                logger.info("RAG Agent created successfully")
+            except Exception as exc:
+                raise ToolExecutionError(
+                    "Failed to build the RAG agent.",
+                    detail=str(exc),
+                ) from exc
+
+            logger.info("RAG Agent created successfully")
     
 
     # ===============================================================================
@@ -97,7 +129,7 @@ class RagAgentService:
         if self._session is None or self.agent is None:
             await self.initialize()
         
-        logger.info(f"[RAG SERVICE] Processing question: {question}")
+        logger.info("[RAG SERVICE] Processing question: %s", question)
         
         # ===============================================================================
         # Ejecución del agente RAG con LangGraph
@@ -106,41 +138,37 @@ class RagAgentService:
         # ===============================================================================
         
         try:
-            # Crear el estado inicial para el agente
-            # Similar a la función ask_rag_langgraph del tutorial
             initial_state = {
                 "input": question,
                 "messages": [HumanMessage(content=question)],
-                "context": ""
+                "context": "",
             }
-            
+
             logger.info("[RAG SERVICE] Estado inicial creado, invocando agente...")
-            
-            # Invocar el agente compilado
-            # El agente ejecutará el flujo: ask_node → llm_node
             final_state = await self.agent.ainvoke(initial_state)
-            
             logger.info("[RAG SERVICE] Agente ejecutado exitosamente")
-            
-            # Extraer la respuesta del estado final
-            # La respuesta está en el último mensaje del estado
-            if "messages" in final_state and final_state["messages"]:
-                # Obtener el último mensaje (respuesta del asistente)
-                last_message = final_state["messages"][-1]
-                answer = last_message.content
-                
-                logger.info(f"[RAG SERVICE] Respuesta extraída: {len(answer)} caracteres")
-                
-                return answer
-            
-            else:
-                # Si no hay mensajes en el estado final, algo salió mal
-                logger.error("[RAG SERVICE] No se encontró respuesta en el estado final")
-                return "Error: No se pudo generar una respuesta."
-                
-        except Exception as e:
-            logger.error(f"[RAG SERVICE] Error al procesar pregunta: {str(e)}")
-            raise
+        except ToolExecutionError as exc:
+            logger.error("[RAG SERVICE] Tool execution error: %s", exc)
+            return self._format_error(exc)
+        except Exception as exc:
+            logger.error("[RAG SERVICE] Unexpected error executing agent: %s", exc)
+            error = ToolExecutionError(
+                "The RAG agent failed while processing the question.",
+                detail=str(exc),
+            )
+            return self._format_error(error)
+
+        messages = final_state.get("messages")
+        if messages:
+            last_message = messages[-1]
+            answer = last_message.content
+            logger.info("[RAG SERVICE] Respuesta extraída: %s caracteres", len(answer))
+            return answer
+
+        raise ConversationStateError(
+            "No response was produced by the RAG agent.",
+            detail="The final LangGraph state does not contain assistant messages.",
+        )
     
 
     async def shutdown(self):

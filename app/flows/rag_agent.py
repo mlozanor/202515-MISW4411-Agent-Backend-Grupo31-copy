@@ -135,13 +135,13 @@ def build_rag_agent(model, ask_tool):
         
         # Obtener la pregunta del usuario del estado
         question = state["input"]
-        logger.info(f"[ASK NODE] Pregunta: {question}")
+        logger.info("[ASK NODE] Pregunta: %s", question)
         
         # Invocar la herramienta del RAG de forma síncrona
         # La herramienta MCP ya está configurada como herramienta de LangChain
         context = await ask_tool.ainvoke({"query": question})
         
-        logger.info(f"[ASK NODE] Contexto recuperado: {len(context)} caracteres")
+        logger.info("[ASK NODE] Contexto recuperado: %s caracteres", len(context))
         
         # Actualizar el estado con el contexto recuperado
         return {
@@ -173,12 +173,12 @@ def build_rag_agent(model, ask_tool):
             "question": question
         })
         
-        logger.info(f"[LLM NODE] Invocando modelo LLM...")
+        logger.info("[LLM NODE] Invocando modelo LLM...")
         
         # Generar respuesta con el modelo
         response = model.invoke(formatted_prompt)
         
-        logger.info(f"[LLM NODE] Respuesta generada: {len(response.content)} caracteres")
+        logger.info("[LLM NODE] Respuesta generada: %s caracteres", len(response.content))
         
         # Crear mensaje de respuesta del asistente
         assistant_message = AIMessage(content=response.content)

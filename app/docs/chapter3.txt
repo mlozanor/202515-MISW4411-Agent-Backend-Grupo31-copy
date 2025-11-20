@@ -1,0 +1,60 @@
+Capítulo 3: Comprensión de los Diferentes Modelos de Cloud Computing
+
+El término "nube" (cloud) se utiliza frecuentemente para describir una variedad de modelos de alojamiento, que van desde la Infraestructura como Servicio (IaaS), pasando por la Plataforma como Servicio (PaaS), hasta el Software como Servicio (SaaS). Si bien los modelos SaaS son conocidos por consumidores y profesionales de negocios (ejemplos son Gmail, Google Docs y Google Drive), la diferenciación entre los servicios de infraestructura y plataforma se vuelve más compleja debido a la naturaleza técnica de los temas.
+En este capítulo, se introduce el concepto fundamental del Modelo de Responsabilidad Compartida (Shared Responsibility Model - SRM) para la infraestructura en la nube y se explora su relación con la toma de decisiones arquitectónicas.
+Los objetivos de este capítulo incluyen:
+• Definir SaaS, PaaS e IaaS.
+• Comparar los modelos de alojamiento en función del Costo Total de Propiedad (TCO), flexibilidad, responsabilidades compartidas, nivel de gestión, y personal y experiencia requerida.
+• Determinar qué modelo es apropiado para diferentes escenarios y casos de uso.
+• Describir el Modelo de Responsabilidad Compartida y qué recae bajo el proveedor de alojamiento frente al cliente en comparación con los entornos on-premises.
+Introducción a los Modelos de Alojamiento en la Nube y el Modelo de Responsabilidad Compartida
+Cuando una organización aloja su propia infraestructura (on-premises), es responsable de todos los componentes necesarios para ofrecer sus servicios, incluyendo la adquisición de hardware, la implementación de la capa de virtualización, la gestión de los sistemas operativos (SO) y el entorno de ejecución (runtime), el escalado, la gestión de la aplicación y la gestión de los datos asociados. Esta gestión requiere una gran cantidad de tiempo de planificación (meses) y un gasto humano y de capital significativo, lo que motivó la creación del modelo de cloud computing.
+La revolución SaaS cambió por completo la forma en que las organizaciones utilizan las aplicaciones, permitiendo el acceso a través de internet en lugar de depender de la infraestructura interna de la nube privada. Esto liberó a las organizaciones de procesos internos complejos y permitió a los proveedores de software entregar su tecnología directamente a los usuarios finales a nivel mundial, evitando los desafíos de la adquisición física. Ejemplos de soluciones SaaS de Google Cloud son Gmail, Google Docs y Google Drive, que facilitan la colaboración a una escala y velocidad antes inimaginables.
+Con esta flexibilidad, las organizaciones estaban dispuestas a sacrificar el control de la infraestructura por los beneficios de la agilidad y la innovación, pero exigieron que los proveedores de la nube asumieran la responsabilidad de asegurar la infraestructura. Así, se desarrolló el Modelo de Responsabilidad Compartida (SRM), que define qué componentes son responsabilidad del proveedor de alojamiento y cuáles son responsabilidad del cliente. Este modelo fue crucial para que las organizaciones en industrias altamente reguladas (como bancos u hospitales) pudieran garantizar el cumplimiento y sentirse cómodas utilizando software alojado externamente.
+La evolución de IaaS fue significativa para los equipos de tecnología, ya que los proveedores de la nube comenzaron a ofrecer la virtualización como un servicio a través de internet. Si bien el cliente interactúa con el entorno y lo gestiona a nivel de diseño de servidor y sistema operativo, todas las complejidades físicas del mundo real son abstraídas.
+Google Cloud Compute Engine es el servicio IaaS de Google Cloud, permitiendo a los clientes lanzar Máquinas Virtuales (VMs) y gestionar aplicaciones como lo harían en un servicio de virtualización tradicional. Los equipos de tecnología pueden seleccionar el tamaño de la máquina o incluso crear su propia configuración de VM personalizada. Los clientes son responsables de instalar aplicaciones, la configuración de red y la gestión del sistema operativo. Google Cloud también ofrece Managed Instance Groups (MIGs), que añaden automatización a la infraestructura basada en VM, proporcionando autoescalado, autocuración (autohealing) y despliegues distribuidos, lo cual es muy valioso para aplicaciones con patrones de tráfico inconsistentes.
+El modelo PaaS ofrece valor al abstraer la necesidad de gestionar la infraestructura, permitiendo a los equipos enfocarse en el desarrollo, alojamiento y gestión de aplicaciones. Esto permite a las organizaciones invertir menos en personal técnico centrado en la infraestructura y más en el desarrollo, lo que ayuda a mantener el ritmo de innovación. Ejemplos de servicios PaaS de Google Cloud incluyen App Engine (una plataforma de alojamiento que abstrae la gestión de VMs y SO, escalando dinámicamente según la demanda) y la Vertex AI Platform (un entorno para equipos de datos y ML para construir, probar, lanzar y gestionar modelos de Machine Learning).
+Comparación y Contraste de IaaS, PaaS y SaaS
+La preparación para la certificación Google Cloud Digital Leader requiere una comprensión sólida de los modelos de alojamiento y sus compensaciones (tradeoffs).
+IaaS (Infrastructure-as-a-Service)
+IaaS proporciona recursos de infraestructura bajo demanda, como cómputo, almacenamiento, networking y virtualización. Los clientes no gestionan la infraestructura del centro de datos, pero sí son responsables del sistema operativo, middleware, VMs, aplicaciones y datos.
+• Costo Total de Propiedad (TCO): Es el más alto de los tres modelos principales. Aunque el hardware puede ser más eficiente, el TCO general aumenta al considerar los costos continuos de licencias y personal necesario para gestionar el sistema operativo y las capas superiores.
+• Flexibilidad: Es el modelo más flexible. Los equipos tienen control completo sobre la infraestructura por encima de la capa de virtualización, lo que les permite seleccionar tipos de máquinas, configuraciones de CPU y RAM, e incluso definir tamaños de máquina personalizados en Google Cloud para maximizar la relación costo-rendimiento.
+• Responsabilidades Compartidas:
+    ◦ Proveedor IaaS: Responsable del hardware y la capa de virtualización.
+    ◦ Cliente IaaS: Responsable del sistema operativo, el entorno de ejecución (runtime), el escalado, la aplicación, los datos y la configuración.
+• Nivel de Gestión: Es el más involucrado para el cliente, ya que los equipos de tecnología supervisan directamente grandes porciones de la pila. Son responsables de la seguridad de los datos, la implementación de la tolerancia a fallos y la recuperación ante desastres (por ejemplo, gestionando entornos hot-hot o hot-cold).
+• Personal y Experiencia: Requiere un conjunto amplio de habilidades, incluyendo la familiaridad con la gestión de VMs, sistemas operativos, bases de datos y virtualización. A menudo, esto implica trasladar el modelo de trabajo on-premises al entorno cloud.
+PaaS (Platform-as-a-Service)
+PaaS proporciona y gestiona todos los recursos de hardware y software necesarios para desarrollar aplicaciones.
+• TCO: Es menor que IaaS, pero mayor que SaaS. Los clientes ahorran significativamente en la gestión de la infraestructura subyacente y evitan grandes contratos de licencia para sistemas operativos, pero el costo de la plataforma es mayor que el de SaaS.
+• Flexibilidad: Es más restringida que IaaS. Los equipos están limitados por lo que el proveedor de la nube puede soportar (por ejemplo, lenguajes de programación o versiones de runtime) ya que no gestionan la infraestructura subyacente.
+• Responsabilidades Compartidas:
+    ◦ Proveedor PaaS: Responsable del hardware, la virtualización, el sistema operativo y el entorno de ejecución.
+    ◦ Cliente PaaS: Responsable del escalado, la aplicación, los datos y la configuración.
+• Nivel de Gestión: Requiere menos tiempo y recursos para gestionar que IaaS. La complejidad de la infraestructura se abstrae, permitiendo a los equipos centrarse en el valor. Aun así, deben gestionar componentes como el escalado.
+• Personal y Experiencia: Los equipos pueden especializarse en desarrollo, ciencia de datos o Machine Learning, ya que la gestión de la infraestructura es responsabilidad del proveedor.
+SaaS (Software-as-a-Service)
+SaaS ofrece la pila de aplicaciones completa, entregando una aplicación lista para usar, a la que generalmente se accede a través de un navegador web.
+• TCO: Es el más bajo de todos los modelos de alojamiento, ya que el proveedor asume los costos de construcción, lanzamiento y mantenimiento de la infraestructura.
+• Flexibilidad: Es el menos flexible. El usuario está restringido por las capacidades y dependencias de la aplicación y su funcionalidad. Hay una personalización mínima, y el control sobre la seguridad y la infraestructura es inexistente.
+• Responsabilidades Compartidas:
+    ◦ Proveedor SaaS: Responsable de toda la pila tecnológica: hardware, virtualización, SO, runtime, escalado y aplicación.
+    ◦ Cliente SaaS: Responsable de los datos y la configuración del sistema.
+• Nivel de Gestión: El control del cliente se limita a los datos cargados y la configuración del sistema. La optimización y el escalado de la infraestructura son completamente abstraídos, ya que los sistemas están diseñados para el uso comercial.
+• Personal y Experiencia: Los equipos se enfocan en ser expertos en el sistema implementado (como administradores de CRM o Google Workspace), asegurando la configuración y la seguridad a nivel de aplicación.
+Más Allá de IaaS, PaaS y SaaS
+A medida que Google Cloud y otros proveedores maduraron, lanzaron servicios que cubren los vacíos entre IaaS, PaaS y SaaS, ofreciendo diferentes niveles de flexibilidad y abstracción. Estos incluyen CaaS y FaaS.
+Contenedores y CaaS (Containers-as-a-Service)
+• Un contenedor es un enfoque de virtualización que empaqueta todo lo necesario para ejecutar una aplicación (código, runtime, bibliotecas y configuraciones).
+• Los contenedores son ligeros, portátiles y eficientes porque comparten el sistema operativo con la máquina anfitriona, a diferencia de las Máquinas Virtuales (VMs) que emulan hardware físico y requieren su propio SO.
+• Los contenedores se utilizan bien con arquitecturas basadas en microservicios, donde una aplicación se descompone en componentes más pequeños e independientes para mejorar la escalabilidad y reducir el riesgo de cambios. Estos componentes se empaquetan en contenedores y se despliegan en grupos llamados Pods.
+• CaaS abstrae la complejidad de la gestión de sistemas operativos y VMs. Los clientes aún pueden gestionar el entorno de ejecución, pero se benefician de funciones como el autoescalado.
+• La orquestación de contenedores y Pods es gestionada por Kubernetes (una tecnología de código abierto).
+Funciones y FaaS (Functions-as-a-Service)
+• Las funciones son pequeños fragmentos de código, similares a microservicios, que generalmente sirven a un propósito específico y simple.
+• FaaS es ideal para la computación basada en eventos, donde un evento desencadena la ejecución de un fragmento de código.
+• Las soluciones FaaS abstraen aún más la infraestructura que PaaS. El proveedor gestiona el escalado y la infraestructura subyacente por completo, permitiendo a los desarrolladores enfocarse exclusivamente en el código. La desventaja es la mínima o nula capacidad de control sobre la infraestructura subyacente.
+Resumen
+Los diferentes modelos de alojamiento en la nube han evolucionado para satisfacer necesidades específicas. SaaS es ideal para aplicaciones orientadas al usuario de negocios; PaaS y FaaS son a menudo la elección de los desarrolladores. Las organizaciones en industrias reguladas que requieren mayor control sobre la infraestructura subyacente eligen IaaS o CaaS.
+La clave para el éxito en la nube es comprender las responsabilidades entre el proveedor y el cliente. La gestión eficaz de estos sistemas es fundamental, ya que el dato es el núcleo de la transformación digital y la adopción de la nube.

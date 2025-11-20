@@ -1,10 +1,22 @@
 {
-    "Chapter 1: Cloud Computing Fundamentals – An Introduction to Digital Transformation": {
+    "Capítulo 1: Fundamentos de Cloud Computing – Una Introducción a la Transformación Digital": {
         "chapter_file_path": "chapter1.txt",
-        "topics": [
-            "Cloud Computing Fundamentals",
-            "The Shift to Public Cloud",
-            "Understanding the Different Cloud Computing Models"
-        ]
+        "topics": ["Introducción a Centros de Datos", "Definición y Beneficios de la Transformación Digital", "Conceptos Clave de la Nube (Cloud-native, Contenedores)", "Fuerzas Impulsoras de la Adopción de la Nube", "Estudio de Caso Hipotético: Acme Inc."]
+    },
+    "Capítulo 2: El Cambio a la Nube Pública": {
+        "chapter_file_path": "chapter2.txt",
+        "topics": ["Valor de la Adopción de Nube Pública", "Impacto en Equipos Financieros (CAPEX vs. OPEX)", "Entornos de Nube (Privada, Pública, Híbrida)", "Introducción a Redes y Terminología", "La Red Global Privada de Google Cloud"]
+    },
+    "Capítulo 3: Comprensión de los Diferentes Modelos de Cloud Computing": {
+        "chapter_file_path": "chapter3.txt",
+        "topics": ["Modelo de Responsabilidad Compartida", "Infraestructura como Servicio (IaaS)", "Plataforma como Servicio (PaaS)", "Software como Servicio (SaaS)", "Modelos Avanzados (CaaS y FaaS)"]
+    },
+    "Capítulo 4: El Papel de los Datos en la Transformación Digital": {
+        "chapter_file_path": "chapter4.txt",
+        "topics": ["Datos como Recurso Valioso", "El Papel de los Datos en la Transformación Digital", "Ventajas de la Cultura Impulsada por Datos", "Impacto de la Nube en la Escalabilidad de Datos", "Seguridad de Datos Mejorada en la Nube"]
+    },
+    "Capítulo 5: Soluciones de Google Cloud para la Gestión de Datos": {
+        "chapter_file_path": "chapter5.txt",
+        "topics": ["El Ciclo de Vida de los Datos", "Servicios de Data Pipelines (Ingestión y Transformación)", "Data Lakes y Google Cloud Storage", "Soluciones de Bases de Datos (SQL y NoSQL)", "Data Warehouses y Business Intelligence (BigQuery y Looker)"]
     }
 }

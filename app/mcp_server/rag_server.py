@@ -76,7 +76,7 @@ async def ask(query: str) -> str:
     Raises:
         Exception: Si hay problemas de conexión con el RAG o el servicio no responde.
     """
-    logger.info(f"[MCP RAG TOOL] Consultando RAG con query: {query}")
+    logger.info("[MCP RAG TOOL] Consultando RAG con query: %s", query)
     
     try:
         # Preparar el payload para la solicitud al RAG
@@ -91,7 +91,7 @@ async def ask(query: str) -> str:
         
         # Crear cliente HTTP asíncrono con timeout
         async with httpx.AsyncClient(timeout=30.0) as client:
-            logger.info(f"[MCP RAG TOOL] Conectando a {RAG_BASE_URL}/query")
+            logger.info("[MCP RAG TOOL] Conectando a %s/api/v1/ask", RAG_BASE_URL)
             
             # Realizar la solicitud POST al endpoint del RAG
             response = await client.post(
@@ -105,7 +105,7 @@ async def ask(query: str) -> str:
             # Parsear la respuesta JSON
             result = response.json()
             
-            logger.info(f"[MCP RAG TOOL] RAG respondió exitosamente")
+            logger.info("[MCP RAG TOOL] RAG respondió exitosamente")
             
             # Extraer y formatear el contexto de los documentos recuperados
             if "results" in result and result["results"]:
@@ -128,32 +128,32 @@ async def ask(query: str) -> str:
                 # Unir todos los documentos en un solo string
                 full_context = "\n\n---\n\n".join(context_parts)
                 
-                logger.info(f"[MCP RAG TOOL] Contexto recuperado: {len(full_context)} caracteres")
+                logger.info("[MCP RAG TOOL] Contexto recuperado: %s caracteres", len(full_context))
                 return full_context
             
             elif "answer" in result:
                 # Si el RAG devuelve directamente una respuesta
-                logger.info(f"[MCP RAG TOOL] RAG devolvió respuesta directa")
+                logger.info("[MCP RAG TOOL] RAG devolvió respuesta directa")
                 return result["answer"]
             
             else:
                 # Si no hay resultados
-                logger.warning(f"[MCP RAG TOOL] No se encontraron resultados")
+                logger.warning("[MCP RAG TOOL] No se encontraron resultados")
                 return "No se encontró información relevante en la base de conocimientos."
                 
     except httpx.TimeoutException:
         error_msg = f"Timeout al conectar con el RAG en {RAG_BASE_URL}"
-        logger.error(f"[MCP RAG TOOL] {error_msg}")
+        logger.error("[MCP RAG TOOL] %s", error_msg)
         raise Exception(error_msg)
     
     except httpx.HTTPStatusError as e:
         error_msg = f"Error HTTP {e.response.status_code} al consultar RAG: {e.response.text}"
-        logger.error(f"[MCP RAG TOOL] {error_msg}")
+        logger.error("[MCP RAG TOOL] %s", error_msg)
         raise Exception(error_msg)
     
     except Exception as e:
         error_msg = f"Error inesperado al consultar RAG: {str(e)}"
-        logger.error(f"[MCP RAG TOOL] {error_msg}")
+        logger.error("[MCP RAG TOOL] %s", error_msg)
         raise Exception(error_msg)
 
 

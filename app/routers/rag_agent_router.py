@@ -15,7 +15,7 @@ NOTA: Este archivo NO requiere modificación por parte de los estudiantes.
 """
 
 from schemas.rag_agent_schema import QuestionRequest, AnswerResponse
-from services.custom_agent_service import CUSTOM_AGENT_SERVICE
+from services.rag_agent_service import RAG_AGENT_SERVICE
 from fastapi import APIRouter
 from fastapi.responses import JSONResponse
 
@@ -26,8 +26,7 @@ router = APIRouter(prefix = "")
 @router.post("/ask_rag", response_model = AnswerResponse)
 async def ask_question(request: QuestionRequest):
     try:
-        answer = await CUSTOM_AGENT_SERVICE.ask_custom(request.question)
-        # Asegurar que la respuesta se devuelva con encoding UTF-8 correcto
+        answer = await RAG_AGENT_SERVICE.ask_rag(request.question)
         return JSONResponse(
             content={"answer": answer},
             media_type="application/json; charset=utf-8"

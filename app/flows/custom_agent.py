@@ -19,7 +19,7 @@ momento y prioriza respuestas concisas (un párrafo) según los requerimientos.
 from __future__ import annotations
 
 from typing import Annotated, Sequence, TypedDict, Optional, List
-from langchain_core.messages import BaseMessage, HumanMessage, AIMessage
+from langchain_core.messages import BaseMessage, HumanMessage, AIMessage, ToolMessage
 from langgraph.graph.message import add_messages
 from langgraph.graph import StateGraph, END
 from pathlib import Path
@@ -27,6 +27,8 @@ from functools import lru_cache
 import json
 import logging
 import re
+
+from core.errors import AgentError, ToolExecutionError
 
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
@@ -135,6 +137,12 @@ def _parse_intent(raw_response: str) -> str:
     return "out_of_scope"
 
 
+def _format_agent_error(exc: AgentError) -> str:
+    if exc.detail:
+        return f"{exc} Detalle: {exc.detail}"
+    return str(exc)
+
+
 def build_custom_agent(model, tools_by_name):
     """Construye el grafo del agente de estudio de Google Cloud."""
 
@@ -145,6 +153,9 @@ def build_custom_agent(model, tools_by_name):
         if list_tool:
             try:
                 chapters_text = await list_tool.ainvoke({})
+            except AgentError as exc:
+                logger.error("[INTRO NODE] Error obteniendo capítulos: %s", exc)
+                chapters_text = _format_agent_error(exc)
             except Exception as exc:
                 logger.error("[INTRO NODE] Error obteniendo capítulos: %s", exc)
                 chapters_text = "No pude obtener la lista de capítulos en este momento."
@@ -244,6 +255,9 @@ def build_custom_agent(model, tools_by_name):
         if topics_tool:
             try:
                 topics_text = await topics_tool.ainvoke({"chapter": chapter})
+            except AgentError as exc:
+                logger.error("[CHAPTER NODE] Error obteniendo temas: %s", exc)
+                topics_text = _format_agent_error(exc)
             except Exception as exc:
                 logger.error("[CHAPTER NODE] Error obteniendo temas: %s", exc)
                 topics_text = "No pude recuperar los temas del capítulo."
@@ -276,6 +290,9 @@ def build_custom_agent(model, tools_by_name):
         if list_tool:
             try:
                 chapters_text = await list_tool.ainvoke({})
+            except AgentError as exc:
+                logger.error("[CHANGE NODE] Error listando capítulos: %s", exc)
+                chapters_text = _format_agent_error(exc)
             except Exception as exc:
                 logger.error("[CHANGE NODE] Error listando capítulos: %s", exc)
                 chapters_text = "No pude obtener la lista de capítulos."
@@ -311,6 +328,9 @@ def build_custom_agent(model, tools_by_name):
 
         try:
             summary = await summary_tool.ainvoke({"chapter": chapter})
+        except AgentError as exc:
+            logger.error("[SUMMARY NODE] Error generando resumen: %s", exc)
+            summary = _format_agent_error(exc)
         except Exception as exc:
             logger.error("[SUMMARY NODE] Error generando resumen: %s", exc)
             summary = "No pude generar el resumen debido a un error."
@@ -353,6 +373,9 @@ def build_custom_agent(model, tools_by_name):
 
         try:
             explanation = await learn_tool.ainvoke(payload)
+        except AgentError as exc:
+            logger.error("[LEARN NODE] Error generando explicación: %s", exc)
+            explanation = _format_agent_error(exc)
         except Exception as exc:
             logger.error("[LEARN NODE] Error generando explicación: %s", exc)
             explanation = "No pude generar la explicación debido a un error."
@@ -382,6 +405,9 @@ def build_custom_agent(model, tools_by_name):
         else:
             try:
                 answer = await ask_tool.ainvoke({"query": question})
+            except AgentError as exc:
+                logger.error("[RAG NODE] Error consultando RAG: %s", exc)
+                answer = _format_agent_error(exc)
             except Exception as exc:
                 logger.error("[RAG NODE] Error consultando RAG: %s", exc)
                 answer = "No pude conectar con la base de conocimientos en este momento."

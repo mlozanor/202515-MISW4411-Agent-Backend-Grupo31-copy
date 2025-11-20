@@ -31,17 +31,23 @@ from typing import Optional
 from langchain_core.messages import HumanMessage
 
 CURRENT_DIR = Path(__file__).resolve().parent
-PARENT_DIR = CURRENT_DIR.parent
+ROOT_DIR = CURRENT_DIR.parent
+CORE_DIR = ROOT_DIR / "core"
 
-if str(CURRENT_DIR) not in sys.path:
-    sys.path.append(str(CURRENT_DIR))
-if str(PARENT_DIR) not in sys.path:
-    sys.path.append(str(PARENT_DIR))
+for path in {CURRENT_DIR, ROOT_DIR, CORE_DIR}:
+    str_path = str(path)
+    if str_path not in sys.path:
+        sys.path.append(str_path)
 
 try:
     from mcp_server.model import llm
 except ModuleNotFoundError:
     from model import llm
+
+try:
+    from core.errors import AgentError, ConfigurationError, ToolExecutionError
+except ModuleNotFoundError:
+    from errors import AgentError, ConfigurationError, ToolExecutionError
 
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
@@ -55,16 +61,24 @@ METADATA_FILE = DOCS_DIR / "metadata.json"
 
 def _load_metadata() -> dict:
     if not METADATA_FILE.exists():
-        raise FileNotFoundError(
-            f"metadata.json no encontrado en {METADATA_FILE}. "
-            "Asegúrate de crear este archivo con los capítulos disponibles."
+        raise ConfigurationError(
+            f"metadata.json no encontrado en {METADATA_FILE}.",
+            detail="Crea el archivo con los capítulos disponibles.",
         )
 
-    with METADATA_FILE.open("r", encoding="utf-8") as f:
-        data = json.load(f)
+    try:
+        with METADATA_FILE.open("r", encoding="utf-8") as file:
+            data = json.load(file)
+    except json.JSONDecodeError as exc:
+        raise ConfigurationError(
+            "metadata.json no tiene un formato JSON válido.",
+            detail=str(exc),
+        ) from exc
 
     if not isinstance(data, dict):
-        raise ValueError("El formato de metadata.json debe ser un objeto JSON con capítulos como llaves.")
+        raise ConfigurationError(
+            "metadata.json debe contener un objeto JSON con capítulos como llaves."
+        )
 
     return data
 
@@ -72,28 +86,44 @@ def _load_metadata() -> dict:
 def _load_prompt(prompt_filename: str) -> str:
     prompt_path = PROMPTS_DIR / prompt_filename
     if not prompt_path.exists():
-        raise FileNotFoundError(f"Prompt requerido no encontrado: {prompt_path}")
+        raise ConfigurationError(
+            f"Prompt requerido no encontrado: {prompt_path}",
+            detail="Verifica que el archivo exista dentro de la carpeta prompts.",
+        )
     return prompt_path.read_text(encoding="utf-8").strip()
 
 
 def _get_chapter_entry(metadata: dict, chapter: str) -> dict:
     if chapter not in metadata:
         available = ", ".join(metadata.keys()) or "N/A"
-        raise ValueError(f"El capítulo '{chapter}' no existe. Capítulos disponibles: {available}")
+        raise ConfigurationError(
+            f"El capítulo '{chapter}' no existe.",
+            detail=f"Capítulos disponibles: {available}",
+        )
     entry = metadata[chapter]
     if "chapter_file_path" not in entry:
-        raise ValueError(f"El capítulo '{chapter}' no tiene 'chapter_file_path' definido en metadata.json.")
+        raise ConfigurationError(
+            f"El capítulo '{chapter}' no tiene 'chapter_file_path' definido en metadata.json."
+        )
     return entry
 
 
 def _load_chapter_content(chapter_path: str) -> str:
     chapter_file = DOCS_DIR / chapter_path
     if not chapter_file.exists():
-        raise FileNotFoundError(f"No se encontró el archivo del capítulo en {chapter_file}")
+        raise ToolExecutionError(
+            f"No se encontró el archivo del capítulo en {chapter_file}",
+            detail="Verifica que el archivo exista en la carpeta docs.",
+        )
     return chapter_file.read_text(encoding="utf-8")
 
 
-async def _run_llm(prompt_filename: str, chapter_name: str, chapter_content: str, topic: Optional[str] = None) -> str:
+async def _run_llm(
+    prompt_filename: str,
+    chapter_name: str,
+    chapter_content: str,
+    topic: Optional[str] = None,
+) -> str:
     system_prompt = _load_prompt(prompt_filename)
     instruction = system_prompt + "\n\n"
     instruction += f"Chapter: {chapter_name}\n"
@@ -102,8 +132,21 @@ async def _run_llm(prompt_filename: str, chapter_name: str, chapter_content: str
     instruction += "\nChapter Content:\n"
     instruction += chapter_content
 
-    response = await llm.ainvoke([HumanMessage(content=instruction)])
+    try:
+        response = await llm.ainvoke([HumanMessage(content=instruction)])
+    except Exception as exc:
+        raise ToolExecutionError(
+            "El modelo de lenguaje no pudo generar la respuesta solicitada.",
+            detail=str(exc),
+        ) from exc
+
     return response.content.strip()
+
+
+def _format_tool_error(exc: AgentError) -> str:
+    if isinstance(exc, AgentError) and exc.detail:
+        return f"{exc} Detalle: {exc.detail}"
+    return str(exc)
 
 
 mcp = FastMCP("custom-server")
@@ -154,31 +197,34 @@ async def get_summary(term: str) -> str:
         - Para obtener info sobre una persona: "Gabriel García Márquez"
         - Para obtener info sobre un lugar: "Bogotá"
     """
-    logger.info(f"[CUSTOM MCP TOOL] get_summary llamada con term: {term}")
+    logger.info("[CUSTOM MCP TOOL] get_summary llamada con term: %s", term)
     
     try:
         page = wiki.page(term)
         
         if not page.exists():
-            logger.warning(f"[CUSTOM MCP TOOL] No se encontró página para: {term}")
+            logger.warning("[CUSTOM MCP TOOL] No se encontró página para: %s", term)
             return f"No se encontró ninguna página de Wikipedia para el término '{term}'. Verifica la ortografía o intenta con un término más específico."
         
         summary = page.summary
         
         if not summary:
-            logger.warning(f"[CUSTOM MCP TOOL] Página existe pero sin resumen: {term}")
+            logger.warning("[CUSTOM MCP TOOL] Página existe pero sin resumen: %s", term)
             return f"Se encontró la página '{term}' pero no tiene resumen disponible."
         
         # Limitar el resumen a los primeros 1000 caracteres para no saturar el contexto
         if len(summary) > 1000:
             summary = summary[:1000] + "..."
         
-        logger.info(f"[CUSTOM MCP TOOL] Resumen obtenido: {len(summary)} caracteres")
+        logger.info("[CUSTOM MCP TOOL] Resumen obtenido: %s caracteres", len(summary))
         return f"Resumen de '{term}':\n\n{summary}"
         
-    except Exception as e:
-        logger.error(f"[CUSTOM MCP TOOL] Error en get_summary: {str(e)}")
-        return f"Error al obtener el resumen: {str(e)}"
+    except Exception as e:  # noqa: BLE001
+        logger.error("[CUSTOM MCP TOOL] Error en get_summary: %s", e)
+        raise ToolExecutionError(
+            "Error al obtener el resumen desde Wikipedia.",
+            detail=str(e),
+        ) from e
 
 
 @mcp.tool()
@@ -207,19 +253,19 @@ async def get_page_sections(term: str) -> str:
         - Para explorar los temas cubiertos en un artículo técnico
         - Para decidir qué sección específica consultar después
     """
-    logger.info(f"[CUSTOM MCP TOOL] get_page_sections llamada con term: {term}")
+    logger.info("[CUSTOM MCP TOOL] get_page_sections llamada con term: %s", term)
     
     try:
         page = wiki.page(term)
         
         if not page.exists():
-            logger.warning(f"[CUSTOM MCP TOOL] No se encontró página para: {term}")
+            logger.warning("[CUSTOM MCP TOOL] No se encontró página para: %s", term)
             return f"No se encontró ningún artículo de Wikipedia para '{term}'."
         
         sections = [s.title for s in page.sections]
         
         if not sections:
-            logger.info(f"[CUSTOM MCP TOOL] Artículo sin secciones: {term}")
+            logger.info("[CUSTOM MCP TOOL] Artículo sin secciones: %s", term)
             return f"El artículo '{term}' no tiene secciones identificables o es muy corto."
         
         # Formatear las secciones de forma legible
@@ -227,12 +273,15 @@ async def get_page_sections(term: str) -> str:
         for i, section in enumerate(sections, 1):
             sections_text += f"{i}. {section}\n"
         
-        logger.info(f"[CUSTOM MCP TOOL] {len(sections)} secciones encontradas")
+        logger.info("[CUSTOM MCP TOOL] %s secciones encontradas", len(sections))
         return sections_text
         
-    except Exception as e:
-        logger.error(f"[CUSTOM MCP TOOL] Error en get_page_sections: {str(e)}")
-        return f"Error al obtener las secciones: {str(e)}"
+    except Exception as e:  # noqa: BLE001
+        logger.error("[CUSTOM MCP TOOL] Error en get_page_sections: %s", e)
+        raise ToolExecutionError(
+            "Error al obtener las secciones desde Wikipedia.",
+            detail=str(e),
+        ) from e
 
 
 @mcp.tool()
@@ -266,13 +315,17 @@ async def get_section_content(term: str, section_title: str) -> str:
     Nota: La búsqueda de la sección es case-insensitive y busca recursivamente
           en secciones anidadas.
     """
-    logger.info(f"[CUSTOM MCP TOOL] get_section_content llamada con term: {term}, section: {section_title}")
+    logger.info(
+        "[CUSTOM MCP TOOL] get_section_content llamada con term: %s, section: %s",
+        term,
+        section_title,
+    )
     
     try:
         page = wiki.page(term)
         
         if not page.exists():
-            logger.warning(f"[CUSTOM MCP TOOL] No se encontró página para: {term}")
+            logger.warning("[CUSTOM MCP TOOL] No se encontró página para: %s", term)
             return f"No se encontró ningún artículo de Wikipedia para '{term}'."
         
         # Función recursiva para buscar la sección en la jerarquía
@@ -291,19 +344,24 @@ async def get_section_content(term: str, section_title: str) -> str:
         if not content:
             # Listar secciones disponibles para ayudar al usuario
             available_sections = [s.title for s in page.sections]
-            logger.warning(f"[CUSTOM MCP TOOL] Sección no encontrada: {section_title}")
+            logger.warning("[CUSTOM MCP TOOL] Sección no encontrada: %s", section_title)
             return f"No se encontró la sección '{section_title}' en el artículo '{term}'.\n\nSecciones disponibles: {', '.join(available_sections)}"
         
         # Limitar el contenido si es muy largo
         if len(content) > 2000:
             content = content[:2000] + "..."
         
-        logger.info(f"[CUSTOM MCP TOOL] Contenido de sección obtenido: {len(content)} caracteres")
+        logger.info(
+            "[CUSTOM MCP TOOL] Contenido de sección obtenido: %s caracteres", len(content)
+        )
         return f"Contenido de la sección '{section_title}' en '{term}':\n\n{content}"
         
-    except Exception as e:
-        logger.error(f"[CUSTOM MCP TOOL] Error en get_section_content: {str(e)}")
-        return f"Error al obtener el contenido de la sección: {str(e)}"
+    except Exception as e:  # noqa: BLE001
+        logger.error("[CUSTOM MCP TOOL] Error en get_section_content: %s", e)
+        raise ToolExecutionError(
+            "Error al obtener el contenido de la sección.",
+            detail=str(e),
+        ) from e
 
 
 # ===============================================================================
@@ -318,9 +376,9 @@ async def list_chapters() -> str:
     """
     try:
         metadata = _load_metadata()
-    except Exception as e:
-        logger.error("[STUDY MCP TOOL] Error listando capítulos: %s", e)
-        return f"Error al listar capítulos: {e}"
+    except AgentError as exc:
+        logger.error("[STUDY MCP TOOL] Error listando capítulos: %s", exc)
+        return f"Error al listar capítulos: {_format_tool_error(exc)}"
 
     if not metadata:
         return "No hay capítulos registrados en metadata.json."
@@ -340,9 +398,9 @@ async def chapter_topics(chapter: str) -> str:
     try:
         metadata = _load_metadata()
         entry = _get_chapter_entry(metadata, chapter)
-    except Exception as e:
-        logger.error("[STUDY MCP TOOL] Error obteniendo temas: %s", e)
-        return str(e)
+    except AgentError as exc:
+        logger.error("[STUDY MCP TOOL] Error obteniendo temas: %s", exc)
+        return _format_tool_error(exc)
 
     topics = entry.get("topics") or []
     if not topics:
@@ -363,16 +421,16 @@ async def chapter_summary(chapter: str) -> str:
         metadata = _load_metadata()
         entry = _get_chapter_entry(metadata, chapter)
         chapter_content = _load_chapter_content(entry["chapter_file_path"])
-    except Exception as e:
-        logger.error("[STUDY MCP TOOL] Error generando resumen: %s", e)
-        return str(e)
+    except AgentError as exc:
+        logger.error("[STUDY MCP TOOL] Error generando resumen: %s", exc)
+        return _format_tool_error(exc)
 
     try:
         summary = await _run_llm("chapter_summary.txt", chapter, chapter_content)
         return summary
-    except Exception as e:
-        logger.error("[STUDY MCP TOOL] Error invocando LLM para resumen: %s", e)
-        return f"Error generando el resumen: {e}"
+    except AgentError as exc:
+        logger.error("[STUDY MCP TOOL] Error invocando LLM para resumen: %s", exc)
+        return f"Error generando el resumen: {_format_tool_error(exc)}"
 
 
 @mcp.tool()
@@ -385,9 +443,9 @@ async def learn_something(chapter: str, topic: Optional[str] = None) -> str:
         entry = _get_chapter_entry(metadata, chapter)
         topics = entry.get("topics") or []
         chapter_content = _load_chapter_content(entry["chapter_file_path"])
-    except Exception as e:
-        logger.error("[STUDY MCP TOOL] Error preparando explicación: %s", e)
-        return str(e)
+    except AgentError as exc:
+        logger.error("[STUDY MCP TOOL] Error preparando explicación: %s", exc)
+        return _format_tool_error(exc)
 
     chosen_topic = topic
     if not chosen_topic:
@@ -410,9 +468,9 @@ async def learn_something(chapter: str, topic: Optional[str] = None) -> str:
     try:
         explanation = await _run_llm("learn_topic.txt", chapter, chapter_content, chosen_topic)
         return explanation
-    except Exception as e:
-        logger.error("[STUDY MCP TOOL] Error invocando LLM para aprendizaje: %s", e)
-        return f"Error generando la explicación: {e}"
+    except AgentError as exc:
+        logger.error("[STUDY MCP TOOL] Error invocando LLM para aprendizaje: %s", exc)
+        return f"Error generando la explicación: {_format_tool_error(exc)}"
 
 
 # Ejecución del servidor MCP

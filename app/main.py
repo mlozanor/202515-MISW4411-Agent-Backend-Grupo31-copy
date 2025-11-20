@@ -17,6 +17,7 @@ from services.custom_agent_service import CUSTOM_AGENT_SERVICE
 from services.rag_agent_service import RAG_AGENT_SERVICE
 from routers import rag_agent_router, custom_agent_router
 from mcp_server.config import get_server_parameters
+from core.error_handlers import register_exception_handlers
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
@@ -41,6 +42,7 @@ app.add_middleware(
 
 app.include_router(rag_agent_router.router)
 app.include_router(custom_agent_router.router)
+register_exception_handlers(app)
 
 
 rag_agent_parameters = get_server_parameters("/app/mcp_server/rag_server.py")

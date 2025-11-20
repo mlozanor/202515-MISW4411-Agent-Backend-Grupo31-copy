@@ -18,6 +18,13 @@ from flows.custom_agent import build_custom_agent
 from mcp.client.stdio import stdio_client
 from mcp_server.tools import load_tools
 from mcp_server.model import llm
+from core.errors import (
+    AgentError,
+    ConfigurationError,
+    ConversationStateError,
+    ExternalServiceError,
+    ToolExecutionError,
+)
 from mcp import ClientSession
 import asyncio
 import logging
@@ -43,6 +50,13 @@ class CustomAgentService:
         self._tools_by_name: Dict[str, Any] = {}
         self._conversation_state: Optional[dict] = None
 
+    @staticmethod
+    def _format_agent_error(error: AgentError) -> str:
+        message = str(error)
+        if getattr(error, "detail", None):
+            message = f"{message} Detalle: {error.detail}"
+        return message
+
     
     def set_server_parameters(self, server_parameters):
         """
@@ -61,17 +75,24 @@ class CustomAgentService:
     async def initialize(self):
         """
         Inicializa la sesión MCP y construye el agente personalizado.
-        
-        NOTA: Este método ya está implementado y NO necesita modificación.
         """
         async with self._lock:
-            if self.agent is None:
-                if not self.custom_server_parameters:
-                    raise ValueError("Custom MCP server parameters not set. Call set_server_parameters() first.")
+            if self.agent is not None:
+                return
 
-                if not self.rag_server_parameters:
-                    raise ValueError("RAG MCP server parameters not set. Call set_rag_server_parameters() first.")
+            if not self.custom_server_parameters:
+                raise ConfigurationError(
+                    "Custom MCP server parameters not set.",
+                    detail="Call set_server_parameters() before initialize().",
+                )
 
+            if not self.rag_server_parameters:
+                raise ConfigurationError(
+                    "RAG MCP server parameters not set.",
+                    detail="Call set_rag_server_parameters() before initialize().",
+                )
+
+            try:
                 logger.info("[CUSTOM SERVICE] Starting custom stdio_client...")
                 self._custom_stdio_ctx = stdio_client(self.custom_server_parameters)
                 custom_read, custom_write = await self._custom_stdio_ctx.__aenter__()
@@ -80,7 +101,7 @@ class CustomAgentService:
                 logger.info("[CUSTOM SERVICE] Custom MCP session initialized successfully")
 
                 custom_tools, custom_tools_by_name = await load_tools(self._custom_session)
-                logger.info(f"[CUSTOM SERVICE] Loaded {len(custom_tools)} custom tools")
+                logger.info("[CUSTOM SERVICE] Loaded %s custom tools", len(custom_tools))
 
                 logger.info("[CUSTOM SERVICE] Starting RAG stdio_client for ask tool...")
                 self._rag_stdio_ctx = stdio_client(self.rag_server_parameters)
@@ -90,20 +111,35 @@ class CustomAgentService:
                 logger.info("[CUSTOM SERVICE] RAG MCP session initialized successfully")
 
                 rag_tools, rag_tools_by_name = await load_tools(self._rag_session)
-                logger.info(f"[CUSTOM SERVICE] Loaded {len(rag_tools)} RAG tools")
+                logger.info("[CUSTOM SERVICE] Loaded %s RAG tools", len(rag_tools))
+            except Exception as exc:
+                raise ExternalServiceError(
+                    "Failed to initialize MCP sessions.",
+                    detail=str(exc),
+                ) from exc
 
-                if "ask" not in rag_tools_by_name:
-                    raise ValueError("The RAG MCP server does not expose a tool named 'ask'")
+            if "ask" not in rag_tools_by_name:
+                raise ConfigurationError(
+                    "The RAG MCP server does not expose a tool named 'ask'.",
+                    detail="Verify the MCP server configuration for RAG.",
+                )
 
-                combined_tools_by_name = {**custom_tools_by_name, **rag_tools_by_name}
+            combined_tools_by_name = {**custom_tools_by_name, **rag_tools_by_name}
+            rag_only_tools = [
+                tool for name, tool in rag_tools_by_name.items() if name not in custom_tools_by_name
+            ]
+            combined_tools = custom_tools + rag_only_tools
 
-                # Evitar duplicados manteniendo el orden: primero personalizados, luego RAG
-                rag_only_tools = [tool for name, tool in rag_tools_by_name.items() if name not in custom_tools_by_name]
-                combined_tools = custom_tools + rag_only_tools
-
-                self._tools_by_name = combined_tools_by_name
+            self._tools_by_name = combined_tools_by_name
+            try:
                 self.agent = build_custom_agent(llm.bind_tools(combined_tools), combined_tools_by_name)
-                logger.info("[CUSTOM SERVICE] Custom Agent created successfully")
+            except Exception as exc:
+                raise AgentError(
+                    "Failed to compile the custom study agent.",
+                    detail=str(exc),
+                ) from exc
+
+            logger.info("[CUSTOM SERVICE] Custom Agent created successfully")
     
 
     # ===============================================================================
@@ -124,9 +160,9 @@ class CustomAgentService:
         # Asegurarse de que el agente está inicializado
         if self.agent is None:
             await self.initialize()
-        
+
         logger.info("[CUSTOM SERVICE] Processing question: %s", question)
-        
+
         if self._conversation_state is None:
             self._conversation_state = {
                 "messages": [],
@@ -137,29 +173,53 @@ class CustomAgentService:
                 "requested_topic": None,
                 "last_tool_result": None,
             }
-        
+
         existing_messages = list(self._conversation_state.get("messages", []))
         existing_messages.append(HumanMessage(content=question))
         self._conversation_state["messages"] = existing_messages
         self._conversation_state["intent"] = None
         self._conversation_state["requested_topic"] = None
-        self._conversation_state["pending_chapter"] = self._conversation_state.get("pending_chapter")
-        
+
         try:
             final_state = await self.agent.ainvoke(self._conversation_state)
-        except Exception as e:
-            logger.error("[CUSTOM SERVICE] Error ejecutando el agente: %s", e)
-            raise
+        except ToolExecutionError as exc:
+            logger.error("[CUSTOM SERVICE] Study agent failed: %s", exc)
+            error_message = self._format_agent_error(exc)
+            self._conversation_state["messages"] = [
+                *self._conversation_state.get("messages", []),
+                AIMessage(content=error_message),
+            ]
+            return error_message
+        except Exception as exc:
+            logger.error("[CUSTOM SERVICE] Unexpected error executing agent: %s", exc)
+            error = ToolExecutionError(
+                "The study agent failed while processing the question.",
+                detail=str(exc),
+            )
+            error_message = self._format_agent_error(error)
+            self._conversation_state["messages"] = [
+                *self._conversation_state.get("messages", []),
+                AIMessage(content=error_message),
+            ]
+            return error_message
 
         self._conversation_state = final_state
-        
-        if "messages" in final_state:
-            for message in reversed(final_state["messages"]):
-                if isinstance(message, AIMessage):
-                    return message.content
-        
-        logger.error("[CUSTOM SERVICE] No se encontró respuesta del agente")
-        return "Lo siento, no pude generar una respuesta en este momento."
+
+        messages = final_state.get("messages")
+        if not messages:
+            raise ConversationStateError(
+                "The final state does not contain messages.",
+                detail="Verify that the LangGraph workflow appends assistant responses.",
+            )
+
+        for message in reversed(messages):
+            if isinstance(message, AIMessage):
+                return message.content
+
+        raise ConversationStateError(
+            "No assistant response was produced by the agent.",
+            detail="The workflow ended without generating an AIMessage.",
+        )
     
 
     async def shutdown(self):
