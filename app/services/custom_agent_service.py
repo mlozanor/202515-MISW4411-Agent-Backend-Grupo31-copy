@@ -13,6 +13,9 @@ IMPLEMENTACIÓN SEMANA 7:
 - Retornar el string de la respuesta final
 """
 
+# IMPORTANTE: Importar la configuración de LangSmith PRIMERO
+import langsmith_config  # Esto debe estar antes de cualquier import de langchain
+
 from langchain_core.messages import HumanMessage, AIMessage
 from flows.custom_agent import build_custom_agent
 from mcp.client.stdio import stdio_client
@@ -28,6 +31,7 @@ from core.errors import (
 from mcp import ClientSession
 import asyncio
 import logging
+import os
 from typing import Optional, Dict, Any
 
 
@@ -49,6 +53,14 @@ class CustomAgentService:
         self.agent = None
         self._tools_by_name: Dict[str, Any] = {}
         self._conversation_state: Optional[dict] = None
+        
+        # Registrar estado del tracing
+        tracing_status = langsmith_config.get_tracing_status()
+        if tracing_status["enabled"]:
+            logger.info("[CUSTOM SERVICE] 🔍 LangSmith tracing ACTIVO - Proyecto: %s", 
+                       tracing_status["project"])
+        else:
+            logger.warning("[CUSTOM SERVICE] ⚠️  LangSmith tracing DESACTIVADO")
 
     @staticmethod
     def _format_agent_error(error: AgentError) -> str:
@@ -139,7 +151,12 @@ class CustomAgentService:
                     detail=str(exc),
                 ) from exc
 
-            logger.info("[CUSTOM SERVICE] Custom Agent created successfully")
+            logger.info("[CUSTOM SERVICE] ✅ Custom Agent created successfully")
+            
+            # Verificar si el tracing está habilitado
+            if os.getenv("LANGCHAIN_TRACING_V2") == "true":
+                logger.info("[CUSTOM SERVICE] 📊 Las trazas se enviarán a LangSmith")
+                logger.info("[CUSTOM SERVICE] 🔗 Dashboard: https://smith.langchain.com")
     
 
     # ===============================================================================
@@ -161,7 +178,11 @@ class CustomAgentService:
         if self.agent is None:
             await self.initialize()
 
-        logger.info("[CUSTOM SERVICE] Processing question: %s", question)
+        logger.info("[CUSTOM SERVICE] 📥 Processing question: %s", question)
+        
+        # Verificar si el tracing está habilitado para esta ejecución
+        if os.getenv("LANGCHAIN_TRACING_V2") == "true":
+            logger.info("[CUSTOM SERVICE] 🔍 Esta ejecución será trazada en LangSmith")
 
         if self._conversation_state is None:
             self._conversation_state = {
@@ -181,9 +202,12 @@ class CustomAgentService:
         self._conversation_state["requested_topic"] = None
 
         try:
+            # La invocación del agente automáticamente enviará trazas a LangSmith
+            # si LANGCHAIN_TRACING_V2=true
             final_state = await self.agent.ainvoke(self._conversation_state)
+            logger.info("[CUSTOM SERVICE] ✅ Agente ejecutado exitosamente")
         except ToolExecutionError as exc:
-            logger.error("[CUSTOM SERVICE] Study agent failed: %s", exc)
+            logger.error("[CUSTOM SERVICE] ❌ Study agent failed: %s", exc)
             error_message = self._format_agent_error(exc)
             self._conversation_state["messages"] = [
                 *self._conversation_state.get("messages", []),
@@ -191,7 +215,7 @@ class CustomAgentService:
             ]
             return error_message
         except Exception as exc:
-            logger.error("[CUSTOM SERVICE] Unexpected error executing agent: %s", exc)
+            logger.error("[CUSTOM SERVICE] ❌ Unexpected error executing agent: %s", exc)
             error = ToolExecutionError(
                 "The study agent failed while processing the question.",
                 detail=str(exc),
@@ -214,6 +238,7 @@ class CustomAgentService:
 
         for message in reversed(messages):
             if isinstance(message, AIMessage):
+                logger.info("[CUSTOM SERVICE] 📤 Respuesta extraída: %s caracteres", len(message.content))
                 return message.content
 
         raise ConversationStateError(
@@ -241,7 +266,7 @@ class CustomAgentService:
             if self._rag_stdio_ctx:
                 await self._rag_stdio_ctx.__aexit__(None, None, None)
                 self._rag_stdio_ctx = None
-            logger.debug("MCP sessions and stdio_clients shut down")
+            logger.debug("[CUSTOM SERVICE] MCP sessions and stdio_clients shut down")
 
 
 CUSTOM_AGENT_SERVICE = CustomAgentService()

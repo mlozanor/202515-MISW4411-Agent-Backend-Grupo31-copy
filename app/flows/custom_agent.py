@@ -27,8 +27,24 @@ from functools import lru_cache
 import json
 import logging
 import re
+import os
 
 from core.errors import AgentError, ToolExecutionError
+
+
+# ===============================================================================
+# CONFIGURACIÓN DE LANGSMITH TRACING
+# ===============================================================================
+
+# Verificar y configurar las variables de ambiente para LangSmith
+if os.getenv("LANGCHAIN_TRACING_V2", "").lower() == "true":
+    os.environ["LANGCHAIN_TRACING_V2"] = "true"
+    temp_logger = logging.getLogger(__name__)
+    temp_logger.info("🔍 LangSmith tracing HABILITADO para Custom Agent")
+    temp_logger.info("📊 Proyecto: %s", os.getenv("LANGCHAIN_PROJECT", "default"))
+else:
+    temp_logger = logging.getLogger(__name__)
+    temp_logger.info("⚠️  LangSmith tracing DESHABILITADO")
 
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
@@ -147,6 +163,7 @@ def build_custom_agent(model, tools_by_name):
     """Construye el grafo del agente de estudio de Google Cloud."""
 
     logger.info("[CUSTOM AGENT] Construyendo agente de estudio...")
+    logger.info("[CUSTOM AGENT] 🔍 Tracing: %s", "HABILITADO" if os.getenv("LANGCHAIN_TRACING_V2") == "true" else "DESHABILITADO")
 
     async def intro_node(state: StudyAgentState) -> StudyAgentState:
         list_tool = tools_by_name.get("list_chapters")
@@ -214,74 +231,61 @@ def build_custom_agent(model, tools_by_name):
         }
 
     async def handle_chapter_selection(state: StudyAgentState) -> StudyAgentState:
-        chapter = state.get("pending_chapter") or state.get("selected_chapter")
-        metadata = _load_metadata()
+        pending = state.get("pending_chapter")
+        if pending:
+            topics_tool = tools_by_name.get("list_topics")
+            if topics_tool:
+                try:
+                    topics_text = await topics_tool.ainvoke({"chapter": pending})
+                except AgentError as exc:
+                    logger.error("[CHAPTER SELECTION] Error obteniendo temas: %s", exc)
+                    topics_text = _format_agent_error(exc)
+                except Exception as exc:
+                    logger.error("[CHAPTER SELECTION] Error obteniendo temas: %s", exc)
+                    topics_text = "No pude obtener los temas del capítulo."
+            else:
+                topics_text = "No pude encontrar la herramienta para listar temas."
 
-        if not metadata:
             message = (
-                "No puedo acceder a los capítulos en este momento. "
-                "Verifica que exista el archivo docs/metadata.json."
+                f"¡Perfecto! Has seleccionado '{pending}'.\n\n"
+                f"Estos son los temas principales:\n{topics_text}\n\n"
+                "¿Te gustaría un resumen del capítulo, profundizar en algún tema específico "
+                "o realizar una pregunta de Google Cloud?"
             )
-            return {**state, "messages": [AIMessage(content=message)], "intent": None}
 
-        if not chapter:
-            available = ", ".join(metadata.keys()) or "No hay capítulos definidos"
-            message = (
-                "No reconocí el capítulo mencionado. "
-                f"Capítulos disponibles: {available}.\n"
-                "Indícame el nombre o número del capítulo que deseas estudiar."
-            )
             return {
                 **state,
-                "stage": "awaiting_chapter",
+                "selected_chapter": pending,
+                "pending_chapter": None,
+                "stage": "awaiting_decision",
                 "intent": None,
                 "messages": [AIMessage(content=message)],
             }
 
-        if chapter not in metadata:
-            available = ", ".join(metadata.keys()) or "No hay capítulos definidos"
-            message = (
-                f"No encontré el capítulo '{chapter}'. "
-                f"Capítulos disponibles: {available}."
-            )
-            return {
-                **state,
-                "stage": "awaiting_chapter",
-                "intent": None,
-                "messages": [AIMessage(content=message)],
-            }
-
-        topics_tool = tools_by_name.get("chapter_topics")
-        if topics_tool:
+        list_tool = tools_by_name.get("list_chapters")
+        if list_tool:
             try:
-                topics_text = await topics_tool.ainvoke({"chapter": chapter})
+                chapters_text = await list_tool.ainvoke({})
             except AgentError as exc:
-                logger.error("[CHAPTER NODE] Error obteniendo temas: %s", exc)
-                topics_text = _format_agent_error(exc)
+                logger.error("[CHAPTER SELECTION] Error listando capítulos: %s", exc)
+                chapters_text = _format_agent_error(exc)
             except Exception as exc:
-                logger.error("[CHAPTER NODE] Error obteniendo temas: %s", exc)
-                topics_text = "No pude recuperar los temas del capítulo."
+                logger.error("[CHAPTER SELECTION] Error listando capítulos: %s", exc)
+                chapters_text = "No pude obtener la lista de capítulos."
         else:
-            topics_text = "No pude encontrar la herramienta para listar temas."
+            chapters_text = "No pude encontrar la herramienta para listar capítulos."
 
         message = (
-            f"Excelente, trabajaremos con el capítulo '{chapter}'.\n\n"
-            f"{topics_text}\n\n"
-            "¿Prefieres un resumen del capítulo o aprender alguno de los temas listados?"
+            "Por favor, elige un capítulo para comenzar:\n"
+            f"{chapters_text}\n\n"
+            "¿Cuál te gustaría estudiar?"
         )
 
-        return {
-            **state,
-            "selected_chapter": chapter,
-            "pending_chapter": None,
-            "stage": "awaiting_decision",
-            "intent": None,
-            "messages": [AIMessage(content=message)],
-        }
+        return {**state, "intent": None, "messages": [AIMessage(content=message)]}
 
     async def handle_change_chapter(state: StudyAgentState) -> StudyAgentState:
-        pending = state.get("pending_chapter")
         new_state = {**state, "selected_chapter": None, "stage": "awaiting_chapter"}
+        pending = state.get("pending_chapter")
 
         if pending:
             return await handle_chapter_selection({**new_state, "pending_chapter": pending})
@@ -497,4 +501,5 @@ def build_custom_agent(model, tools_by_name):
 
     compiled_graph = workflow.compile()
     logger.info("[CUSTOM AGENT] ✅ Grafo de estudio compilado exitosamente")
+    logger.info("[CUSTOM AGENT] 📊 Todas las invocaciones serán trazadas en LangSmith")
     return compiled_graph

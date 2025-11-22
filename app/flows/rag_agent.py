@@ -17,6 +17,7 @@ CARACTERÍSTICAS:
 - Flujo determinístico (sin ramificaciones)
 - No usa bind_tools (herramienta específica recibida como parámetro)
 - Siempre ejecuta la misma secuencia de pasos
+- Tracing habilitado con LangSmith
 """
 
 from typing import Annotated, Sequence, TypedDict
@@ -27,6 +28,22 @@ from langgraph.graph.message import add_messages
 
 import logging
 import sys
+import os
+
+
+# ===============================================================================
+# CONFIGURACIÓN DE LANGSMITH TRACING
+# ===============================================================================
+
+# Verificar y configurar las variables de ambiente para LangSmith
+if os.getenv("LANGCHAIN_TRACING_V2", "").lower() == "true":
+    os.environ["LANGCHAIN_TRACING_V2"] = "true"
+    logger_temp = logging.getLogger(__name__)
+    logger_temp.info("🔍 LangSmith tracing HABILITADO")
+    logger_temp.info("📊 Proyecto: %s", os.getenv("LANGCHAIN_PROJECT", "default"))
+else:
+    logger_temp = logging.getLogger(__name__)
+    logger_temp.info("⚠️  LangSmith tracing DESHABILITADO")
 
 
 # Configurar logging con UTF-8
@@ -120,6 +137,7 @@ def build_rag_agent(model, ask_tool):
     """
     
     logger.info("[RAG AGENT] Construyendo agente RAG con LangGraph...")
+    logger.info("[RAG AGENT] 🔍 Tracing: %s", "HABILITADO" if os.getenv("LANGCHAIN_TRACING_V2") == "true" else "DESHABILITADO")
     
     # ===============================================================================
     # NODO 1: Recuperación de contexto desde el RAG
@@ -137,7 +155,7 @@ def build_rag_agent(model, ask_tool):
         question = state["input"]
         logger.info("[ASK NODE] Pregunta: %s", question)
         
-        # Invocar la herramienta del RAG de forma síncrona
+        # Invocar la herramienta del RAG de forma asíncrona
         # La herramienta MCP ya está configurada como herramienta de LangChain
         context = await ask_tool.ainvoke({"query": question})
         
@@ -154,7 +172,7 @@ def build_rag_agent(model, ask_tool):
     # NODO 2: Generación de respuesta con el LLM
     # ===============================================================================
     
-    def llm_node(state: AgentState) -> AgentState:
+    async def llm_node(state: AgentState) -> AgentState:
         """
         Nodo que genera la respuesta usando el modelo LLM y el contexto.
         
@@ -175,8 +193,8 @@ def build_rag_agent(model, ask_tool):
         
         logger.info("[LLM NODE] Invocando modelo LLM...")
         
-        # Generar respuesta con el modelo
-        response = model.invoke(formatted_prompt)
+        # Generar respuesta con el modelo (async)
+        response = await model.ainvoke(formatted_prompt)
         
         logger.info("[LLM NODE] Respuesta generada: %s caracteres", len(response.content))
         
@@ -212,5 +230,6 @@ def build_rag_agent(model, ask_tool):
     compiled_graph = workflow.compile()
     
     logger.info("[RAG AGENT] ✅ Agente RAG compilado exitosamente")
+    logger.info("[RAG AGENT] 📊 Todas las invocaciones serán trazadas en LangSmith")
     
     return compiled_graph

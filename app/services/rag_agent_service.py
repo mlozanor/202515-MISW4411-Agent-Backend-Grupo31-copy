@@ -13,6 +13,9 @@ IMPLEMENTACIÓN SEMANA 6:
 - Retornar el string de la respuesta final
 """
 
+# IMPORTANTE: Importar la configuración de LangSmith PRIMERO
+import langsmith_config  # Esto debe estar antes de cualquier import de langchain
+
 from langchain_core.messages import HumanMessage
 from flows.rag_agent import build_rag_agent
 from mcp.client.stdio import stdio_client
@@ -28,6 +31,7 @@ from core.errors import (
 from mcp import ClientSession
 import asyncio
 import logging
+import os
 
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
@@ -42,6 +46,14 @@ class RagAgentService:
         self._stdio_ctx = None
         self._session = None
         self.agent = None
+        
+        # Registrar estado del tracing
+        tracing_status = langsmith_config.get_tracing_status()
+        if tracing_status["enabled"]:
+            logger.info("[RAG SERVICE] 🔍 LangSmith tracing ACTIVO - Proyecto: %s", 
+                       tracing_status["project"])
+        else:
+            logger.warning("[RAG SERVICE] ⚠️  LangSmith tracing DESACTIVADO")
 
     
     def set_server_parameters(self, server_parameters):
@@ -72,12 +84,12 @@ class RagAgentService:
                 )
 
             try:
-                logger.info("Starting stdio_client...")
+                logger.info("[RAG SERVICE] Starting stdio_client...")
                 self._stdio_ctx = stdio_client(self.server_parameters)
                 read, write = await self._stdio_ctx.__aenter__()
                 self._session = await ClientSession(read, write).__aenter__()
                 await self._session.initialize()
-                logger.info("MCP session initialized successfully")
+                logger.info("[RAG SERVICE] MCP session initialized successfully")
 
                 tools, tools_by_name = await load_tools(self._session)
             except Exception as exc:
@@ -102,7 +114,12 @@ class RagAgentService:
                     detail=str(exc),
                 ) from exc
 
-            logger.info("RAG Agent created successfully")
+            logger.info("[RAG SERVICE] ✅ RAG Agent created successfully")
+            
+            # Verificar si el tracing está habilitado
+            if os.getenv("LANGCHAIN_TRACING_V2") == "true":
+                logger.info("[RAG SERVICE] 📊 Las trazas se enviarán a LangSmith")
+                logger.info("[RAG SERVICE] 🔗 Dashboard: https://smith.langchain.com")
     
 
     # ===============================================================================
@@ -129,7 +146,11 @@ class RagAgentService:
         if self._session is None or self.agent is None:
             await self.initialize()
         
-        logger.info("[RAG SERVICE] Processing question: %s", question)
+        logger.info("[RAG SERVICE] 📥 Processing question: %s", question)
+        
+        # Verificar si el tracing está habilitado para esta ejecución
+        if os.getenv("LANGCHAIN_TRACING_V2") == "true":
+            logger.info("[RAG SERVICE] 🔍 Esta ejecución será trazada en LangSmith")
         
         # ===============================================================================
         # Ejecución del agente RAG con LangGraph
@@ -145,13 +166,18 @@ class RagAgentService:
             }
 
             logger.info("[RAG SERVICE] Estado inicial creado, invocando agente...")
+            
+            # La invocación del agente automáticamente enviará trazas a LangSmith
+            # si LANGCHAIN_TRACING_V2=true
             final_state = await self.agent.ainvoke(initial_state)
-            logger.info("[RAG SERVICE] Agente ejecutado exitosamente")
+            
+            logger.info("[RAG SERVICE] ✅ Agente ejecutado exitosamente")
+            
         except ToolExecutionError as exc:
-            logger.error("[RAG SERVICE] Tool execution error: %s", exc)
+            logger.error("[RAG SERVICE] ❌ Tool execution error: %s", exc)
             return self._format_error(exc)
         except Exception as exc:
-            logger.error("[RAG SERVICE] Unexpected error executing agent: %s", exc)
+            logger.error("[RAG SERVICE] ❌ Unexpected error executing agent: %s", exc)
             error = ToolExecutionError(
                 "The RAG agent failed while processing the question.",
                 detail=str(exc),
@@ -162,7 +188,7 @@ class RagAgentService:
         if messages:
             last_message = messages[-1]
             answer = last_message.content
-            logger.info("[RAG SERVICE] Respuesta extraída: %s caracteres", len(answer))
+            logger.info("[RAG SERVICE] 📤 Respuesta extraída: %s caracteres", len(answer))
             return answer
 
         raise ConversationStateError(
@@ -184,7 +210,7 @@ class RagAgentService:
             if self._stdio_ctx:
                 await self._stdio_ctx.__aexit__(None, None, None)
                 self._stdio_ctx = None
-            logger.debug("MCP session and stdio_client shut down")
+            logger.debug("[RAG SERVICE] MCP session and stdio_client shut down")
 
 
 RAG_AGENT_SERVICE = RagAgentService()
