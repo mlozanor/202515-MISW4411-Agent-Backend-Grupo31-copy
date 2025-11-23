@@ -32,7 +32,8 @@ app.add_middleware(
         "http://localhost:3000",  # Frontend local
         "http://127.0.0.1:3000", 
         "http://localhost:3001",  # Frontend local - alt port
-        "http://127.0.0.1:3001"   
+        "http://127.0.0.1:3001",
+        "https://main.d2fp84nxnfobfe.amplifyapp.com"   
     ],
     allow_credentials=True,
     allow_methods=["*"],
