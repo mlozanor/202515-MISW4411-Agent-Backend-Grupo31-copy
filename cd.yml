@@ -1,0 +1,87 @@
+name: CD – Build & Deploy to Cloud Run
+
+on:
+  push:
+    branches:
+      - main
+
+# Only run deploy after CI tests pass
+# If you want to enforce this, use: needs: [test] with a workflow_run trigger.
+# For simplicity this workflow runs independently but after CI succeeds.
+
+env:
+  PROJECT_ID: ${{ secrets.GCP_PROJECT_ID }}
+  REGION: us-central1                        # Change to your preferred region
+  SERVICE_NAME: agent-backend-grupo31
+  IMAGE: gcr.io/${{ secrets.GCP_PROJECT_ID }}/agent-backend-grupo31
+
+jobs:
+  build-and-deploy:
+    name: Build Docker & Deploy
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+      id-token: write   # Required for Workload Identity Federation (recommended)
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # ── Authenticate to Google Cloud ──────────────────────────────────────
+      # Option A (recommended): Workload Identity Federation — no long-lived key
+      - name: Authenticate to Google Cloud
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: ${{ secrets.GCP_WORKLOAD_IDENTITY_PROVIDER }}
+          service_account: ${{ secrets.GCP_SERVICE_ACCOUNT }}
+
+      # Option B (simpler, less secure): Service Account JSON key
+      # Uncomment the block below and comment out Option A if you prefer this.
+      #
+      # - name: Authenticate to Google Cloud (SA key)
+      #   uses: google-github-actions/auth@v2
+      #   with:
+      #     credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+      # ── Set up gcloud & Docker ────────────────────────────────────────────
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v2
+
+      - name: Configure Docker for GCR
+        run: gcloud auth configure-docker --quiet
+
+      # ── Build & Push Docker image ─────────────────────────────────────────
+      - name: Build Docker image
+        run: |
+          docker build \
+            --tag ${{ env.IMAGE }}:${{ github.sha }} \
+            --tag ${{ env.IMAGE }}:latest \
+            ./app
+
+      - name: Push Docker image to GCR
+        run: |
+          docker push ${{ env.IMAGE }}:${{ github.sha }}
+          docker push ${{ env.IMAGE }}:latest
+
+      # ── Deploy to Cloud Run ───────────────────────────────────────────────
+      - name: Deploy to Cloud Run
+        run: |
+          gcloud run deploy ${{ env.SERVICE_NAME }} \
+            --image ${{ env.IMAGE }}:${{ github.sha }} \
+            --region ${{ env.REGION }} \
+            --platform managed \
+            --allow-unauthenticated \
+            --port 8000 \
+            --set-env-vars "GOOGLE_API_KEY=${{ secrets.GOOGLE_API_KEY }}" \
+            --set-env-vars "RAG_BASE_URL=${{ secrets.RAG_BASE_URL }}" \
+            --set-env-vars "LANGCHAIN_API_KEY=${{ secrets.LANGCHAIN_API_KEY }}" \
+            --set-env-vars "LANGCHAIN_TRACING_V2=${{ secrets.LANGCHAIN_TRACING_V2 }}" \
+            --set-env-vars "LANGCHAIN_PROJECT=${{ secrets.LANGCHAIN_PROJECT }}" \
+            --quiet
+
+      - name: Show deployed service URL
+        run: |
+          gcloud run services describe ${{ env.SERVICE_NAME }} \
+            --region ${{ env.REGION }} \
+            --format "value(status.url)"
